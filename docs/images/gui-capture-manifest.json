@@ -1,0 +1,55 @@
+{
+  "source_commit": "761dabbd090ea37351d7bd96e11b283bc20c20cc",
+  "frontend_sha256": {
+    "app.css": "3ada9cfb63f9ce67ec300c4ee34b3036bf5e5001a7755c37c5bad4875e7134a9",
+    "app.js": "69af3115296f1bbfd0ba3f37355087609efb305faea8f15cdd48b9678ad75fb3",
+    "build-i18n.cjs": "2821724f1c5425e4311750935d09e14cfcf9ca01fd0bae90a251a65ad104785e",
+    "host.js": "ce79cfe0d5ff79a3ebfdfe035986e9f54b728199114d5da743e17be7250af3e6",
+    "i18n.js": "0035a26a6011c89447b035e610d5cde418c72eb3b304924dd13136633f063bb7",
+    "i18n.json": "19bab5a5ff73b218f1d9dd4375b56f89d2ce7d6c94b42190228b24100208fb24",
+    "index.html": "2604397fc11d6eeb48907bcb0b94c90ddd43d3d1fd57a351f5aa249c2b3c1960",
+    "loadout-panel.js": "bd393ab9e4f441fffca69dda666879ee8265b017f42826504bc15875537d7a93",
+    "project-state.js": "505500ae8d7e2103ce1689c153669bcc2580bfb964c23f113dcd78fd0a2da860",
+    "release-engine.js": "4d122b31be81a0cacc7aa352d979a8ac5c4846dcc639942a0f33028e8964aba4"
+  },
+  "renderer": "Playwright 1.55.0 / Chromium",
+  "viewport": [
+    1600,
+    1200
+  ],
+  "native_windows_host_launched": false,
+  "native_host_adapter_loaded": false,
+  "frontend_source_modified": false,
+  "captures": [
+    {
+      "locale": "zh-Hant",
+      "setup": "gui-setup-zh-Hant.png",
+      "cultivation": "gui-cultivation-zh-Hant.png",
+      "page_errors": [],
+      "external_requests": [],
+      "game_connected": false,
+      "builtin_demo": true,
+      "start_disabled": true
+    },
+    {
+      "locale": "en",
+      "setup": "gui-setup-en.png",
+      "cultivation": "gui-cultivation-en.png",
+      "page_errors": [],
+      "external_requests": [],
+      "game_connected": false,
+      "builtin_demo": true,
+      "start_disabled": true
+    },
+    {
+      "locale": "ja",
+      "setup": "gui-setup-ja.png",
+      "cultivation": "gui-cultivation-ja.png",
+      "page_errors": [],
+      "external_requests": [],
+      "game_connected": false,
+      "builtin_demo": true,
+      "start_disabled": true
+    }
+  ]
+}

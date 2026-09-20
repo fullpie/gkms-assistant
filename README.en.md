@@ -6,7 +6,20 @@ A **Windows assistant for automated training runs** in Gakuen Idolmaster (学園
 
 **Current version: 0.1** · **[Download the latest release](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
-<!-- GUI screenshot pending: add a verified application capture here; do not use a mockup or an image containing account data. -->
+<!-- BEGIN GUI SCREENSHOTS -->
+## GUI screenshots
+
+![Automated training interface](docs/images/gui-cultivation-en.png)
+
+Captured from the actual project frontend using its built-in offline demo, with the native game connector omitted. No game is connected; progress and scores shown are sample data, not measured results.
+
+<details>
+<summary>Setup and installation</summary>
+
+![Setup and installation](docs/images/gui-setup-en.png)
+
+</details>
+<!-- END GUI SCREENSHOTS -->
 
 ## Features
 

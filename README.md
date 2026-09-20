@@ -6,7 +6,20 @@
 
 **目前版本：0.1** · **[下載最新版本](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
-<!-- GUI screenshot pending: add a verified application capture here; do not use a mockup or an image containing account data. -->
+<!-- BEGIN GUI SCREENSHOTS -->
+## GUI 截圖
+
+![自動培育介面](docs/images/gui-cultivation-zh-Hant.png)
+
+直接開啟本專案原始 GUI 前端，以內建離線示範模式擷取；未載入遊戲連接器，也未連接遊戲。畫面中的進度與分數為示範資料，不代表實測成績。
+
+<details>
+<summary>設定與安裝畫面</summary>
+
+![設定與安裝畫面](docs/images/gui-setup-zh-Hant.png)
+
+</details>
+<!-- END GUI SCREENSHOTS -->
 
 ## 目前功能
 

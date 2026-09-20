@@ -6,7 +6,20 @@
 
 **現在のバージョン：0.1** · **[最新版をダウンロード](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
-<!-- GUI screenshot pending: add a verified application capture here; do not use a mockup or an image containing account data. -->
+<!-- BEGIN GUI SCREENSHOTS -->
+## GUI スクリーンショット
+
+![自動育成画面](docs/images/gui-cultivation-ja.png)
+
+本プロジェクトの GUI フロントエンドを実際に開き、ゲーム接続用アダプターを読み込まずに、内蔵のオフラインデモで撮影しています。ゲームには接続していません。表示される進行状況やスコアはデモ用データであり、実測結果ではありません。
+
+<details>
+<summary>設定・インストール画面</summary>
+
+![設定・インストール画面](docs/images/gui-setup-ja.png)
+
+</details>
+<!-- END GUI SCREENSHOTS -->
 
 ## 主な機能
 
