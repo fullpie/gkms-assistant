@@ -154,7 +154,7 @@
         "gkms_tool.runtime_economy_policy:30",
         "gkms_tool.runtime_outer_policy:393",
         "gkms_tool.runtime_outer_policy:771",
-        "gkms_tool.runtime_outer_runner:516",
+        "gkms_tool.runtime_outer_runner:544",
         "gkms_tool.runtime_schedule_opportunity:12"
       ],
       "standalone_entrypoint_exported": false
@@ -240,7 +240,7 @@
       "module": "gkms_tool.runtime_direct_replay_receipt",
       "reason": "retained by an actual conservative GUI import edge",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:266"
+        "gkms_tool.runtime_outer_runner:294"
       ],
       "standalone_entrypoint_exported": false
     },
@@ -497,7 +497,7 @@
     ".gitattributes": "730a35ae3d558080083c3103d9ac8100c3f6561678092abe341701dfa331eb1d",
     ".gitignore": "2eeddd0fafdff86a5a3ae8dd252806c308cdcc1b5329d2f56bd7a7e7e3575e2c",
     "NOTICE.txt": "ec1511f9bdd37be646851358e4c6cc73bada6b0efdbd63237a9b806e1672b5a3",
-    "README.md": "66f767bf2965b7ae18651a72bb32b5334d6197341d503e279139d08771147ee4",
+    "README.md": "b0bf7c385fa69c539eb76980cd0618ea7afee76c964e1c34ffb830dc3ee481b5",
     "docs/gui-update-recovery.md": "99a4ee357ecf82ba0651892fa2113b47e35dc9637c85db38be26710011a7b843",
     "docs/portable-outer-assets.md": "34c67bf3879094ff3e5f6fc96fe22ab94866637ccf019c53211f7ab0c04e5efb",
     "docs/public-gui-packaging.md": "424bcd3efe3dfa449c57b9f02e81cf5c2edb44ee1a1d3447e8263799a3bb008a",
@@ -766,13 +766,13 @@
     "native-source/third_party/localify/src/windowsPlatform.hpp": "c10fc73c41c2a170b87fad6c74075ca6943b320adf033f0e63d816dceb37fca7",
     "native/gui_window/Program.cs": "691208a570ec956403593bb0ad2c3a334810860015b5d407ef9b0a8a4d866003",
     "native/gui_window/app.manifest": "cc02410e7dca96d146ff2dfef152f17aa2a8e6b74f0b9b5e3f3616bb50ccc6dd",
-    "pyproject.toml": "0d684f3c8ea5471249537b4bcc6c114a24e3f8edbe786d1fe6e084a5848b984a",
+    "pyproject.toml": "a195918924d434265e7d577dddf2692920c9c6154b31b3961b9e6e30a1841d50",
     "src/gkms_tool/__init__.py": "104b6a05d9ecef066c8f72c2effa43e8ce45f8853cb680377b82321cf522ef4a",
     "src/gkms_tool/account_inventory.py": "906fc96be493a0994eadee374da3980031a1ebf05a3e4c78b471db03c3f5b88d",
     "src/gkms_tool/account_loadout.py": "fa5fb50e622029a42493b5f1ef4d8498535f09a5d78a966acc7c45ad93278f66",
     "src/gkms_tool/active_state_features.py": "505bf0cc76a9a20e55d1d426eb54672aceace0e2d7105776849bba00796ab87d",
     "src/gkms_tool/activity_reward.py": "7a1770a859a7d787077e1b2b059270852dcfa4969c919536771de16ffdc98dea",
-    "src/gkms_tool/app_version.py": "57b4f885816d2169289fe490783f76b6e96870b3145470abf15a684863e36747",
+    "src/gkms_tool/app_version.py": "f618a30c6630522e56e4dada557e3566804db1e11bdd2b2a8a2d595458061977",
     "src/gkms_tool/application_paths.py": "42d5280f14162001226c93b0bddb855d2a7cba8898a4a7e5be7f2b3020699eea",
     "src/gkms_tool/artifact_source_resolver.py": "9b57f58441d510b31af72b377b3070c93c91408946ae8ddf243ea05a613c2ede",
     "src/gkms_tool/audition_hand_hold_audit.py": "a19cc8007732576e42f6ad69bd441fb0b4146ae4a696447a93d94e4be1adcafc",
@@ -1348,7 +1348,7 @@
     "src/gkms_tool/runtime_outer_behavior_prior.py": "15c7b9cf45df9e2942a6b537a65703ba62593bee1e3748f1321313fcacd4d2d4",
     "src/gkms_tool/runtime_outer_observer_watcher.py": "e8fd5c6e54974e888bbd1534b6c7478d8ea82772e1e1b761a5902602f2aa46f2",
     "src/gkms_tool/runtime_outer_policy.py": "3ff0d2b038439b0d16a2def97c250434cf805babab8844247f0a916d84b9226e",
-    "src/gkms_tool/runtime_outer_runner.py": "8979311c1c207038e67f0d1ff92a0f3c089b9279bd5bc3eae3dd93bd165ff780",
+    "src/gkms_tool/runtime_outer_runner.py": "d9235d6285a8cc746fb22ffc7a46a1bcf2aa679673a97c7bb5a2249e8da28db0",
     "src/gkms_tool/runtime_outer_snapshot.py": "5d3f12282054746a597be11dc0e74254680ec9b8ae77a4cbbd63c02581d3caa5",
     "src/gkms_tool/runtime_pitem_reward.py": "49331d7e48089336ad265c3ea87550c26fa45a05f4aa07c61cd597131e37741b",
     "src/gkms_tool/runtime_plan1_drink_policy.py": "b7acfe37b5dc44553da20f5db09c9d1c0126564d6047573a8bc0fd1dc22d251a",
@@ -2054,7 +2054,7 @@
       "required_by": [
         "gkms_tool.account_loadout:12",
         "gkms_tool.gui_card_library:15",
-        "gkms_tool.runtime_outer_runner:805"
+        "gkms_tool.runtime_outer_runner:833"
       ],
       "sha256": "906fc96be493a0994eadee374da3980031a1ebf05a3e4c78b471db03c3f5b88d"
     },
@@ -2070,7 +2070,7 @@
         "gkms_tool.gui_card_library:46",
         "gkms_tool.gui_card_library:466",
         "gkms_tool.gui_setup.loadout_service:11",
-        "gkms_tool.runtime_outer_runner:806"
+        "gkms_tool.runtime_outer_runner:834"
       ],
       "sha256": "fa5fb50e622029a42493b5f1ef4d8498535f09a5d78a966acc7c45ad93278f66"
     },
@@ -2114,7 +2114,7 @@
         "gkms_tool.gui_setup.app_updates:23",
         "gkms_tool.public_gui_entry:15"
       ],
-      "sha256": "57b4f885816d2169289fe490783f76b6e96870b3145470abf15a684863e36747"
+      "sha256": "f618a30c6630522e56e4dada557e3566804db1e11bdd2b2a8a2d595458061977"
     },
     {
       "module": "gkms_tool.application_paths",
@@ -2709,7 +2709,7 @@
       "required_by": [
         "gkms_tool.initial_regular_simulator_gui:3156",
         "gkms_tool.native_stage_ingest_receipt:17",
-        "gkms_tool.runtime_outer_runner:654"
+        "gkms_tool.runtime_outer_runner:682"
       ],
       "sha256": "d118ea4b2cce19b079c1f40b0762160ac739b85590208704c7513e362b1540f4"
     },
@@ -2804,7 +2804,7 @@
       "required_by": [
         "gkms_tool.initial_regular_autopilot:29",
         "gkms_tool.initial_regular_simulator_gui:26",
-        "gkms_tool.runtime_outer_runner:795"
+        "gkms_tool.runtime_outer_runner:823"
       ],
       "sha256": "6e6b67de2efc7e5813c9c7389725878b4877a224c42f23c29d789d5529dffc93"
     },
@@ -3068,7 +3068,7 @@
         "gkms_tool.initial_regular_simulator_gui:63",
         "gkms_tool.nia_completion_acceptance:16",
         "gkms_tool.nia_live_unattended:25",
-        "gkms_tool.runtime_outer_runner:655"
+        "gkms_tool.runtime_outer_runner:683"
       ],
       "sha256": "e70c53fdbd1b8c4b1b018f80cd497f6050dd253c12230454b244b97ed2cbe7f5"
     },
@@ -3324,7 +3324,7 @@
         "gkms_tool.gui:1356",
         "gkms_tool.portable_model_assets:144",
         "gkms_tool.runtime_gui_exam_policy:17",
-        "gkms_tool.runtime_outer_runner:714"
+        "gkms_tool.runtime_outer_runner:742"
       ],
       "sha256": "21e8dc48259f41fe9ddd455143865fce7a41d6f79d88c0898a87e6068f7d1ba5"
     },
@@ -4481,7 +4481,7 @@
         "gkms_tool.runtime_gui_exam_policy:30",
         "gkms_tool.runtime_live_exam_input:21",
         "gkms_tool.runtime_master_source:12",
-        "gkms_tool.runtime_outer_runner:728"
+        "gkms_tool.runtime_outer_runner:756"
       ],
       "sha256": "1b052039fb9cb93401f98b6ad187c2f6e5d31c969616c7fa19d6d1a82aabf7b4"
     },
@@ -4581,7 +4581,7 @@
         "gkms_tool.glass_gui.adapter:319",
         "gkms_tool.runtime_gui_exam_policy:70",
         "gkms_tool.runtime_live_exam_input:82",
-        "gkms_tool.runtime_outer_runner:716"
+        "gkms_tool.runtime_outer_runner:744"
       ],
       "sha256": "811714f4683b3d19396673a7fde38fef1ef0dd2ef2aa8935d86cd8671723df6f"
     },
@@ -4930,7 +4930,7 @@
         "gkms_tool.runtime_lesson_policy:15",
         "gkms_tool.runtime_nia_plan3:15",
         "gkms_tool.runtime_outer_policy:21",
-        "gkms_tool.runtime_outer_runner:705",
+        "gkms_tool.runtime_outer_runner:733",
         "gkms_tool.runtime_pitem_reward:13",
         "gkms_tool.runtime_plan1_drink_policy:8",
         "gkms_tool.runtime_plan1_terminal_policy:12",
@@ -4974,8 +4974,8 @@
         "gkms_tool.completed_run_evidence:138",
         "gkms_tool.native_stage_ingest_receipt:144",
         "gkms_tool.native_stage_ingest_receipt:87",
-        "gkms_tool.runtime_outer_runner:1034",
-        "gkms_tool.runtime_outer_runner:848"
+        "gkms_tool.runtime_outer_runner:1062",
+        "gkms_tool.runtime_outer_runner:876"
       ],
       "sha256": "712296395398d5711c4ac4b6a908a576454d82bc4f17bde0706ca0d2d6028c26"
     },
@@ -5495,7 +5495,7 @@
         "gkms_tool.completed_run_evidence:22",
         "gkms_tool.initial_live_unattended:27",
         "gkms_tool.initial_regular_simulator_gui:3158",
-        "gkms_tool.runtime_outer_runner:656"
+        "gkms_tool.runtime_outer_runner:684"
       ],
       "sha256": "06b720cce9cc0b748923b5dfca22d14a33920016f7e5c78012ac707e31e81bae"
     },
@@ -5951,7 +5951,7 @@
         "gkms_tool.initial_regular_autopilot:15356",
         "gkms_tool.nia_live_unattended:1839",
         "gkms_tool.nia_live_unattended:1860",
-        "gkms_tool.runtime_outer_runner:657"
+        "gkms_tool.runtime_outer_runner:685"
       ],
       "sha256": "64769390d637c2808225b1fad7ad9aaeddadcf6c35293338e66c87aba4c60c0b"
     },
@@ -6018,7 +6018,7 @@
         "gkms_tool.runtime_economy_policy:30",
         "gkms_tool.runtime_outer_policy:393",
         "gkms_tool.runtime_outer_policy:771",
-        "gkms_tool.runtime_outer_runner:516",
+        "gkms_tool.runtime_outer_runner:544",
         "gkms_tool.runtime_schedule_opportunity:12"
       ],
       "sha256": "f42e7d9bdd507bf4d1f465403faf385566ad4b3769e33e1fea72d2ffc5f1cc4b"
@@ -8686,7 +8686,7 @@
         "gkms_tool.policy_dashboard:11",
         "gkms_tool.runtime_exam_dispatch:72",
         "gkms_tool.runtime_fullpower_policy:137",
-        "gkms_tool.runtime_outer_runner:706",
+        "gkms_tool.runtime_outer_runner:734",
         "gkms_tool.runtime_plan2_executor:23"
       ],
       "sha256": "697717f4dde2d3d1f1a97d0c19d15adb5c3402caf450771028a5cc93f68b338c"
@@ -8706,7 +8706,7 @@
         "gkms_tool.learned_policy_selector:264",
         "gkms_tool.policy_bundle:693",
         "gkms_tool.runtime_fullpower_policy:90",
-        "gkms_tool.runtime_outer_runner:707"
+        "gkms_tool.runtime_outer_runner:735"
       ],
       "sha256": "e33b57bf9d0887d509fd93beff269dc6ac96c29e9a1fd8ab99abd2e6e378c41d"
     },
@@ -8776,7 +8776,7 @@
         "gkms_tool.account_loadout:449",
         "gkms_tool.portable_behavior_assets:27",
         "gkms_tool.public_gui_entry:20",
-        "gkms_tool.runtime_outer_runner:1216"
+        "gkms_tool.runtime_outer_runner:1244"
       ],
       "sha256": "b72f0a4583baacfc7a2b23879cd2fc3afc6983ad22279167516fdccc5cc2c0d9"
     },
@@ -8841,7 +8841,7 @@
         "gkms_tool.nia_outer_policy_adapter:26",
         "gkms_tool.nia_outer_resource_model:29",
         "gkms_tool.plan3_audition_advisor_gui:23",
-        "gkms_tool.runtime_outer_runner:800"
+        "gkms_tool.runtime_outer_runner:828"
       ],
       "sha256": "74bbad2ec9323ae56e1836f73299713f879ab07a485da9d33738479ea80eb63c"
     },
@@ -9163,11 +9163,11 @@
         "gkms_tool.run_shadow:1139",
         "gkms_tool.runtime_maintenance_independent_verification:180",
         "gkms_tool.runtime_maintenance_late_verification:18",
-        "gkms_tool.runtime_outer_runner:1202",
+        "gkms_tool.runtime_outer_runner:1230",
         "gkms_tool.runtime_outer_runner:35",
-        "gkms_tool.runtime_outer_runner:658",
-        "gkms_tool.runtime_outer_runner:801",
-        "gkms_tool.runtime_outer_runner:871"
+        "gkms_tool.runtime_outer_runner:686",
+        "gkms_tool.runtime_outer_runner:829",
+        "gkms_tool.runtime_outer_runner:899"
       ],
       "sha256": "e65fe844462959095205a73c8664ca3684f841cd9eca5b4a5a13914222a94b5e"
     },
@@ -9239,7 +9239,7 @@
       "path": "src/gkms_tool/runtime_card_choice_policy.py",
       "required_by": [
         "gkms_tool.runtime_exam_executor:484",
-        "gkms_tool.runtime_outer_runner:498"
+        "gkms_tool.runtime_outer_runner:526"
       ],
       "sha256": "f51a799a09231441cf4e2adfac3e9ce4e1e520465ea5b06ba779e5af7dd32f0c"
     },
@@ -9296,7 +9296,7 @@
       "module": "gkms_tool.runtime_deck_plan",
       "path": "src/gkms_tool/runtime_deck_plan.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:1201"
+        "gkms_tool.runtime_outer_runner:1229"
       ],
       "sha256": "069a864b919f5ecf7d75d7171b56cde091567fa474e49e9adf6db69aa38e00bc"
     },
@@ -9304,7 +9304,7 @@
       "module": "gkms_tool.runtime_direct_replay_receipt",
       "path": "src/gkms_tool/runtime_direct_replay_receipt.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:266"
+        "gkms_tool.runtime_outer_runner:294"
       ],
       "sha256": "d412b95931120d1962c08ea161a310eb6ea5d142fdd9ddc4b1b60e6e23bc896d"
     },
@@ -9312,7 +9312,7 @@
       "module": "gkms_tool.runtime_drink_choice",
       "path": "src/gkms_tool/runtime_drink_choice.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:529"
+        "gkms_tool.runtime_outer_runner:557"
       ],
       "sha256": "b5df2a5a4fbe28cac63e2eacb703ad62997adbf9a5fefb5b765da98cfb40f9aa"
     },
@@ -9320,7 +9320,7 @@
       "module": "gkms_tool.runtime_economy_context",
       "path": "src/gkms_tool/runtime_economy_context.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:830"
+        "gkms_tool.runtime_outer_runner:858"
       ],
       "sha256": "2528f8b46daf135cdeaa182d43f4e38982f455a31d2535398e29851f113d4e3e"
     },
@@ -9329,7 +9329,7 @@
       "path": "src/gkms_tool/runtime_economy_policy.py",
       "required_by": [
         "gkms_tool.runtime_economy_context:14",
-        "gkms_tool.runtime_outer_runner:515"
+        "gkms_tool.runtime_outer_runner:543"
       ],
       "sha256": "eef60f49c9df192b2865abd3c85322ed0694764bdb3bebfd3e4a1f7e0ed34d97"
     },
@@ -9356,7 +9356,7 @@
       "module": "gkms_tool.runtime_exam_dispatch",
       "path": "src/gkms_tool/runtime_exam_dispatch.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:1070"
+        "gkms_tool.runtime_outer_runner:1098"
       ],
       "sha256": "ccf4f5e264ed788954722e841a3a763f4761f20f4f9c1a37df7b5f0f2e7611cf"
     },
@@ -9378,7 +9378,7 @@
       "module": "gkms_tool.runtime_failed_settlement",
       "path": "src/gkms_tool/runtime_failed_settlement.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:802"
+        "gkms_tool.runtime_outer_runner:830"
       ],
       "sha256": "6568736d23fe4a702c53fd6b8ad512c9a9f8256f5eb8407383ad92dbd8756350"
     },
@@ -9407,8 +9407,8 @@
       "path": "src/gkms_tool/runtime_fullpower_policy.py",
       "required_by": [
         "gkms_tool.runtime_exam_dispatch:81",
-        "gkms_tool.runtime_outer_runner:758",
-        "gkms_tool.runtime_outer_runner:764"
+        "gkms_tool.runtime_outer_runner:786",
+        "gkms_tool.runtime_outer_runner:792"
       ],
       "sha256": "8bb6a96b92dfa06d2a6312758c0d5883b85f7f2211e94f763dee29cbc2bbfe13"
     },
@@ -9426,7 +9426,7 @@
       "required_by": [
         "gkms_tool.public_gui_entry:19",
         "gkms_tool.runtime_exam_dispatch:48",
-        "gkms_tool.runtime_outer_runner:736"
+        "gkms_tool.runtime_outer_runner:764"
       ],
       "sha256": "e205a094eb5f7502ccd43c847f72b8b2db887772c2015d62cdad9a51218213e5"
     },
@@ -9476,8 +9476,8 @@
       "path": "src/gkms_tool/runtime_live_loading.py",
       "required_by": [
         "gkms_tool.runtime_final_presentation_recovery:79",
-        "gkms_tool.runtime_outer_runner:287",
-        "gkms_tool.runtime_outer_runner:372",
+        "gkms_tool.runtime_outer_runner:315",
+        "gkms_tool.runtime_outer_runner:400",
         "gkms_tool.runtime_presentation:74"
       ],
       "sha256": "d672ce32ac876158e9188e4c4fc3b20a53701406a192cdf850416d5cdade78f2"
@@ -9487,7 +9487,7 @@
       "path": "src/gkms_tool/runtime_live_recorder.py",
       "required_by": [
         "gkms_tool.runtime_exam_executor:25",
-        "gkms_tool.runtime_outer_runner:694"
+        "gkms_tool.runtime_outer_runner:722"
       ],
       "sha256": "0efa377f0008237c911a158391e6d640d5819b61a2a0563437429a9421d7d70a"
     },
@@ -9505,8 +9505,8 @@
       "path": "src/gkms_tool/runtime_login_touch.py",
       "required_by": [
         "gkms_tool.runtime_final_presentation_recovery:60",
-        "gkms_tool.runtime_outer_runner:277",
-        "gkms_tool.runtime_outer_runner:427",
+        "gkms_tool.runtime_outer_runner:305",
+        "gkms_tool.runtime_outer_runner:455",
         "gkms_tool.runtime_session_continuity:17"
       ],
       "sha256": "a801778b00ab70fdccee421e309c13256e8b3b390ad334d415384579dde3f01c"
@@ -9556,8 +9556,8 @@
       "path": "src/gkms_tool/runtime_memory_autoselect.py",
       "required_by": [
         "gkms_tool.account_loadout:364",
-        "gkms_tool.runtime_outer_runner:1113",
-        "gkms_tool.runtime_outer_runner:295"
+        "gkms_tool.runtime_outer_runner:1141",
+        "gkms_tool.runtime_outer_runner:323"
       ],
       "sha256": "00a7be4e4c1ec3392f6e274be406f747f1c3c4f89fae6a57f7ce230d9162afb9"
     },
@@ -9574,7 +9574,7 @@
         "gkms_tool.runtime_lesson_context:88",
         "gkms_tool.runtime_nia_plan3:22",
         "gkms_tool.runtime_outer_policy:137",
-        "gkms_tool.runtime_outer_runner:708"
+        "gkms_tool.runtime_outer_runner:736"
       ],
       "sha256": "41d36307e9240717a6d0046eacfb8d9ed2bcc8dde90620b5170b6b96553509d0"
     },
@@ -9657,9 +9657,9 @@
       "required_by": [
         "gkms_tool.gui:1407",
         "gkms_tool.gui_dashboard_views:35",
-        "gkms_tool.runtime_outer_runner:481",
-        "gkms_tool.runtime_outer_runner:499",
-        "gkms_tool.runtime_outer_runner:880"
+        "gkms_tool.runtime_outer_runner:509",
+        "gkms_tool.runtime_outer_runner:527",
+        "gkms_tool.runtime_outer_runner:908"
       ],
       "sha256": "3ff0d2b038439b0d16a2def97c250434cf805babab8844247f0a916d84b9226e"
     },
@@ -9673,7 +9673,7 @@
         "gkms_tool.initial_regular_simulator_gui:3126",
         "gkms_tool.initial_regular_simulator_gui:3259"
       ],
-      "sha256": "8979311c1c207038e67f0d1ff92a0f3c089b9279bd5bc3eae3dd93bd165ff780"
+      "sha256": "d9235d6285a8cc746fb22ffc7a46a1bcf2aa679673a97c7bb5a2249e8da28db0"
     },
     {
       "module": "gkms_tool.runtime_outer_snapshot",
@@ -9769,9 +9769,9 @@
       "module": "gkms_tool.runtime_presentation",
       "path": "src/gkms_tool/runtime_presentation.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:283",
-        "gkms_tool.runtime_outer_runner:367",
-        "gkms_tool.runtime_outer_runner:968"
+        "gkms_tool.runtime_outer_runner:311",
+        "gkms_tool.runtime_outer_runner:395",
+        "gkms_tool.runtime_outer_runner:996"
       ],
       "sha256": "68203f391afedf64ef04f19c8f732d7d54d23eecf35146d0f426b6d3a280ea88"
     },
@@ -9806,7 +9806,7 @@
       "required_by": [
         "gkms_tool.runtime_card_choice_policy:257",
         "gkms_tool.runtime_card_choice_policy:312",
-        "gkms_tool.runtime_outer_runner:535"
+        "gkms_tool.runtime_outer_runner:563"
       ],
       "sha256": "549f1680908d19cfe2e6484db761317434ea7ccce4010e9434805f87d63797a0"
     },
@@ -9814,7 +9814,7 @@
       "module": "gkms_tool.runtime_reward_group",
       "path": "src/gkms_tool/runtime_reward_group.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:305"
+        "gkms_tool.runtime_outer_runner:333"
       ],
       "sha256": "d346752241b31e478237edab0e2038f171af182346031ed7ccc3acbf2a0fdbf8"
     },
@@ -9831,7 +9831,7 @@
       "module": "gkms_tool.runtime_reward_receipt",
       "path": "src/gkms_tool/runtime_reward_receipt.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:270"
+        "gkms_tool.runtime_outer_runner:298"
       ],
       "sha256": "7f359f0aeacca01bd82a07b7a2306f968cd6faa1b06e11f3ecb536e7272b8318"
     },
@@ -9865,7 +9865,7 @@
         "gkms_tool.runtime_maintenance_independent_verification:266",
         "gkms_tool.runtime_maintenance_late_verification:177",
         "gkms_tool.runtime_maintenance_late_verification:19",
-        "gkms_tool.runtime_outer_runner:803"
+        "gkms_tool.runtime_outer_runner:831"
       ],
       "sha256": "d1f16394ea609f3e0082c406f3c6c8e1e1d7e8050566ef18da5b794ab4b931a6"
     },
@@ -9873,8 +9873,8 @@
       "module": "gkms_tool.runtime_startup_notice",
       "path": "src/gkms_tool/runtime_startup_notice.py",
       "required_by": [
-        "gkms_tool.runtime_outer_runner:280",
-        "gkms_tool.runtime_outer_runner:393"
+        "gkms_tool.runtime_outer_runner:308",
+        "gkms_tool.runtime_outer_runner:421"
       ],
       "sha256": "c7d5e77de58888cb4e47ec2376a848584660a08c08aa95f7e06372490a291139"
     },
@@ -10210,5 +10210,5 @@
   "research_cli_entrypoints_exported": false,
   "schema": "gkms.public-source-export.v1",
   "source_export_complete": true,
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

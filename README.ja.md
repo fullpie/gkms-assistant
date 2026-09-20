@@ -4,7 +4,7 @@
 
 『学園アイドルマスター』の **Windows 向け自動育成アシスタント**です。シンプルな GUI でアイドル・モード・連続育成回数を選び、モデルによる自動育成と進行状況の確認ができます。
 
-**現在のバージョン：0.1** · **[最新版をダウンロード](https://github.com/fullpie/gkms-assistant/releases/latest)**
+**現在のバージョン：0.1.1** · **[最新版をダウンロード](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
 <!-- BEGIN GUI SCREENSHOTS -->
 ## GUI スクリーンショット
@@ -33,7 +33,7 @@
 
 **動作要件：** Windows x64、Microsoft Edge WebView2 Runtime、.NET Framework 4.7.2 以降。
 
-1. [Releases](https://github.com/fullpie/gkms-assistant/releases/latest) から通常利用向けの `gkms-assistant-0.1.0-windows-x64.zip` をダウンロードします。GUI 更新用・ソースコード用のアーカイブとは異なります。
+1. [Releases](https://github.com/fullpie/gkms-assistant/releases/latest) から通常利用向けの `gkms-assistant-0.1.1-windows-x64.zip` をダウンロードします。GUI 更新用・ソースコード用のアーカイブとは異なります。
 2. すべて展開してから `GKMS-Assistant.exe` を起動します。
 3. 設定でゲームフォルダーを指定し、必須の操作モジュールをインストールしてから育成を開始します。ゲーム翻訳の導入は任意です。
 

@@ -1,6 +1,6 @@
 """Single public application identity; V12 remains historical design provenance."""
-VERSION = "0.1.0"
-DISPLAY_VERSION = "0.1"
+VERSION = "0.1.1"
+DISPLAY_VERSION = "0.1.1"
 PRODUCT = "gkms-assistant"
 COMPONENT = "gui"
 CHANNEL = "stable"

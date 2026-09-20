@@ -4,7 +4,7 @@
 
 A **Windows assistant for automated training runs** in Gakuen Idolmaster (学園アイドルマスター). Choose an idol, mode, and number of runs through a simple GUI, then let the model handle the run while you follow its progress.
 
-**Current version: 0.1** · **[Download the latest release](https://github.com/fullpie/gkms-assistant/releases/latest)**
+**Current version: 0.1.1** · **[Download the latest release](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
 <!-- BEGIN GUI SCREENSHOTS -->
 ## GUI screenshots
@@ -33,7 +33,7 @@ Captured from the actual project frontend using its built-in offline demo, with 
 
 **Requirements:** Windows x64, Microsoft Edge WebView2 Runtime, and .NET Framework 4.7.2 or later.
 
-1. Download the full user package, `gkms-assistant-0.1.0-windows-x64.zip`, from [Releases](https://github.com/fullpie/gkms-assistant/releases/latest), not the GUI update or source archive.
+1. Download the full user package, `gkms-assistant-0.1.1-windows-x64.zip`, from [Releases](https://github.com/fullpie/gkms-assistant/releases/latest), not the GUI update or source archive.
 2. Extract the entire archive and run `GKMS-Assistant.exe`.
 3. Select the game folder in Settings and install the required control module before starting a run. Game translation is optional.
 

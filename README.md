@@ -4,7 +4,7 @@
 
 《學園偶像大師》（学園アイドルマスター）的 **Windows 自動培育助手**。透過簡潔的 GUI 選擇偶像、模式與連續場數，使用模型執行培育並查看進度。
 
-**目前版本：0.1** · **[下載最新版本](https://github.com/fullpie/gkms-assistant/releases/latest)**
+**目前版本：0.1.1** · **[下載最新版本](https://github.com/fullpie/gkms-assistant/releases/latest)**
 
 <!-- BEGIN GUI SCREENSHOTS -->
 ## GUI 截圖
@@ -33,7 +33,7 @@
 
 **需求：** Windows x64、Microsoft Edge WebView2 Runtime、.NET Framework 4.7.2 以上。
 
-1. 前往 [Releases](https://github.com/fullpie/gkms-assistant/releases/latest)，下載完整使用者包 `gkms-assistant-0.1.0-windows-x64.zip`，不要選 GUI 更新包或原始碼包。
+1. 前往 [Releases](https://github.com/fullpie/gkms-assistant/releases/latest)，下載完整使用者包 `gkms-assistant-0.1.1-windows-x64.zip`，不要選 GUI 更新包或原始碼包。
 2. 完整解壓縮後，執行 `GKMS-Assistant.exe`。
 3. 在設定中選擇遊戲資料夾並安裝必要的操控模組，再開始培育；遊戲翻譯可自行選擇是否安裝。
 

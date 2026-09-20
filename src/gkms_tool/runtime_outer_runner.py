@@ -158,6 +158,34 @@ class RuntimeOuterGateway(RuntimeOuterReader):
         self.timeout, self.cancelled = timeout, cancelled
         self.monotonic, self.sleep, self.lease = monotonic, sleep, lease
 
+    def read(self) -> RuntimeOuterSnapshot:
+        # This ordinary ADV component can briefly remain shown while the
+        # game changes screens. Retry only its rejected observation; actual
+        # persistent choices still stop with the original error at the deadline.
+        deadline = self.monotonic() + self.timeout
+        last_rejection = None
+        while True:
+            if self.cancelled is not None and self.cancelled():
+                raise RuntimeCommandError("cancelled while reading native Outer state")
+            remaining = deadline - self.monotonic()
+            if last_rejection is not None and remaining <= 0:
+                raise last_rejection
+            if self.timeout > 0 and remaining <= 0:
+                raise RuntimeCommandError("native Outer read deadline expired before another request")
+            reader = RuntimeOuterReader(self.client, timeout=max(0.0, remaining),
+                cancelled=self.cancelled, monotonic=self.monotonic, sleep=self.sleep)
+            try:
+                return reader.read()
+            except RuntimeCommandError as error:
+                if (type(error) is not RuntimeCommandError or str(error) !=
+                        "command-rejected: visible native ADV choices require their own choice contract"
+                        or self.timeout <= 0 or self.monotonic() >= deadline):
+                    raise
+                last_rejection = error
+                if self.cancelled is not None and self.cancelled():
+                    raise RuntimeCommandError("cancelled while reading native Outer state") from error
+                self.sleep(min(0.25, max(0.0, deadline - self.monotonic())))
+
     @property
     def pending_path(self):
         return self.client.root / "pending_outer.json"
