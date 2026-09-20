@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+var/
+build/
+dist/
+*.egg-info/
+assets/model_runtime/
+assets/loadout/
+assets/outer_runtime/
+assets/display_labels/
+assets/control/
+.pytest_cache/

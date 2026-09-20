@@ -1,0 +1,3 @@
+Original GKMS Assistant project portions: All rights reserved. No additional open-source license is granted.
+This notice applies only to original project portions. Third-party components and modifications governed by their licenses retain those terms and source rights.
+See the accompanying third-party license inventories and corresponding source.

@@ -1,0 +1,5 @@
+
+
+namespace GkmsGUILoop {
+	void mainLoop();
+}

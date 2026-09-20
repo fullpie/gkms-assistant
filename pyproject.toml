@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gkms-assistant"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Local GUI assistant for Gakumas"
+dependencies = ["maafw==5.12.2", "PyYAML==6.0.3", "numpy==2.4.6", "onnxruntime==1.28.0", "Pillow==11.3.0", "pycryptodome==3.19.0", "UnityPy==1.25.2", "pefile==2024.8.26", "capstone==5.0.9"]
+
+[project.optional-dependencies]
+build = ["pyinstaller==6.22.3"]
+
+[project.scripts]
+gkms-assistant = "gkms_tool.public_gui_entry:main"
+gkms-assistant-launcher = "gkms_tool.public_gui_bootstrap:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+"gkms_tool.glass_gui" = ["web/*.html", "web/*.css", "web/*.js", "web/i18n.json"]

@@ -1,0 +1,1072 @@
+{
+  "schema": "gkms.public-native-corresponding-source.v1",
+  "control_archive_sha256": "834e1d6f51c8413f7e8ce0e9fc842650ff32a1774daf0e07d7e7bc4f5be3b7e8",
+  "localify_source_archive_sha256": "c299e2d653de73d9fcb4fb995bad295aeafdc04f037083e044afc00cd145a9fd",
+  "public_profiles_only": true,
+  "test_or_research_DLLs_included": false,
+  "compiler_projects": {
+    "runtime_command_bridge": [
+      "native/runtime_command_bridge/src/audition_result_adapter.cpp",
+      "native/runtime_command_bridge/src/audition_retry_adapter.cpp",
+      "native/runtime_command_bridge/src/bridge.cpp",
+      "native/runtime_command_bridge/src/callback_method_contract.cpp",
+      "native/runtime_command_bridge/src/continuation.cpp",
+      "native/runtime_command_bridge/src/customize_confirmation_adapter.cpp",
+      "native/runtime_command_bridge/src/drink_inventory_adapter.cpp",
+      "native/runtime_command_bridge/src/error_adapter.cpp",
+      "native/runtime_command_bridge/src/exam_adapter.cpp",
+      "native/runtime_command_bridge/src/exam_card_phase_observation.cpp",
+      "native/runtime_command_bridge/src/exam_model_observation.cpp",
+      "native/runtime_command_bridge/src/exam_reference_presence.cpp",
+      "native/runtime_command_bridge/src/exam_save_serializer.cpp",
+      "native/runtime_command_bridge/src/interval_adapter.cpp",
+      "native/runtime_command_bridge/src/inventory_adapter.cpp",
+      "native/runtime_command_bridge/src/live_loading_adapter.cpp",
+      "native/runtime_command_bridge/src/live_presentation_adapter.cpp",
+      "native/runtime_command_bridge/src/mailbox.cpp",
+      "native/runtime_command_bridge/src/memory_auto_adapter.cpp",
+      "native/runtime_command_bridge/src/mode_navigation_adapter.cpp",
+      "native/runtime_command_bridge/src/native_trace.cpp",
+      "native/runtime_command_bridge/src/outer_adapter.cpp",
+      "native/runtime_command_bridge/src/outer_pointer_guard.cpp",
+      "native/runtime_command_bridge/src/pc_method_binding.cpp",
+      "native/runtime_command_bridge/src/pc_version_profile.cpp",
+      "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp",
+      "native/runtime_command_bridge/src/produce_effect_view_adapter.cpp",
+      "native/runtime_command_bridge/src/produce_lifecycle_adapter.cpp",
+      "native/runtime_command_bridge/src/produce_result_adapter.cpp",
+      "native/runtime_command_bridge/src/recommended_replay_adapter.cpp",
+      "native/runtime_command_bridge/src/replay_entry_adapter.cpp",
+      "native/runtime_command_bridge/src/result_score_notice_adapter.cpp",
+      "native/runtime_command_bridge/src/reward_drink_capacity_adapter.cpp",
+      "native/runtime_command_bridge/src/runtime.cpp",
+      "native/runtime_command_bridge/src/screen_context.cpp",
+      "native/runtime_command_bridge/src/selection_memory_adapter.cpp",
+      "native/runtime_command_bridge/src/shop_adapter.cpp",
+      "native/runtime_command_bridge/src/story_adapter.cpp"
+    ],
+    "runtime_exam_recorder": [
+      "third_party/localify/deps/minhook/src/buffer.c",
+      "third_party/localify/deps/minhook/src/hde/hde32.c",
+      "third_party/localify/deps/minhook/src/hde/hde64.c",
+      "third_party/localify/deps/minhook/src/hook.c",
+      "third_party/localify/deps/minhook/src/trampoline.c",
+      "native/runtime_command_bridge/src/pc_method_binding.cpp",
+      "native/runtime_command_bridge/src/pc_version_profile.cpp",
+      "native/telemetry_observer/src/il2cpp_api.cpp",
+      "native/runtime_exam_recorder/src/dllmain.cpp",
+      "native/runtime_exam_recorder/src/recorder.cpp"
+    ]
+  },
+  "source_projections": [
+    {
+      "path": "native/runtime_command_bridge/src/audition_result_adapter.cpp",
+      "original_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+      "exported_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_result_adapter.hpp",
+      "original_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+      "exported_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/runtime.hpp",
+      "original_sha256": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
+      "exported_sha256": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/gc_handle_abi.hpp",
+      "original_sha256": "07f2d5665bac94ec6e64adfa1627be5e01951ef2dd52113298a7bb17b8c56359",
+      "exported_sha256": "07f2d5665bac94ec6e64adfa1627be5e01951ef2dd52113298a7bb17b8c56359",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_retry_adapter.hpp",
+      "original_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
+      "exported_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_lifecycle_adapter.hpp",
+      "original_sha256": "ef60e27ff482abf67172114c09eac2c0376262f185daa22808bbe41532334004",
+      "exported_sha256": "ef60e27ff482abf67172114c09eac2c0376262f185daa22808bbe41532334004",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/callback_method_contract.hpp",
+      "original_sha256": "b1076ec110c0f04fa209cf2655c64bca3bdb63bda3e8bbe3386e5c404a580fae",
+      "exported_sha256": "b1076ec110c0f04fa209cf2655c64bca3bdb63bda3e8bbe3386e5c404a580fae",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pointer_identity.hpp",
+      "original_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
+      "exported_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_retry_adapter.cpp",
+      "original_sha256": "430d6d26af324d69ee453b7aa111885c2f4e33986f7d08b88990bd162250e3d9",
+      "exported_sha256": "430d6d26af324d69ee453b7aa111885c2f4e33986f7d08b88990bd162250e3d9",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/screen_context.hpp",
+      "original_sha256": "2f271437a9ab35d5a9b441b9baaa88737ef8c8bb9d50167dd97c833237d7321a",
+      "exported_sha256": "2f271437a9ab35d5a9b441b9baaa88737ef8c8bb9d50167dd97c833237d7321a",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_identity.hpp",
+      "original_sha256": "797d6b92a540ffb0ddb3294080aff24948efc02068c21f60eb8d56158c94fffc",
+      "exported_sha256": "797d6b92a540ffb0ddb3294080aff24948efc02068c21f60eb8d56158c94fffc",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/bridge.cpp",
+      "original_sha256": "9fd93fd6a6403dc717c42498e0b7ba073ceadfbb56508cf8ac4d1632f31ae3e6",
+      "exported_sha256": "a127396e883708625b84fa1f9643b0502af1c5250a2e90b23f6c49df3612b3ac",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_adapter.hpp",
+      "original_sha256": "63c84113cc2d31e30325a38664e6d593a63755cd244fa03a637d07dd56b4c01f",
+      "exported_sha256": "63c84113cc2d31e30325a38664e6d593a63755cd244fa03a637d07dd56b4c01f",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_save_serializer.hpp",
+      "original_sha256": "dfb4f709523c9c935910914ca97bfd4ed14d8886f204021e2834e28d2d5ba689",
+      "exported_sha256": "dfb4f709523c9c935910914ca97bfd4ed14d8886f204021e2834e28d2d5ba689",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_model_observation.hpp",
+      "original_sha256": "8a35ebb4316d74635e2722a6197ff45528891cc5ca1c188f090b8e0dc649efef",
+      "exported_sha256": "8a35ebb4316d74635e2722a6197ff45528891cc5ca1c188f090b8e0dc649efef",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_selector_close_owner.hpp",
+      "original_sha256": "6634626e31fcf950d4c321320fc991ac3234262e5195c48cb4e7a6b76e6b97f6",
+      "exported_sha256": "6634626e31fcf950d4c321320fc991ac3234262e5195c48cb4e7a6b76e6b97f6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_selector_owner.hpp",
+      "original_sha256": "6c20c52948165f7c63060af57993d54648c5144b9631e6a3fa3a99db9b2f8bf3",
+      "exported_sha256": "6c20c52948165f7c63060af57993d54648c5144b9631e6a3fa3a99db9b2f8bf3",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_card_selector_family.hpp",
+      "original_sha256": "64085aa37c757eea4b933096308c3eee88582ae57b584d736d9aac83c6911fce",
+      "exported_sha256": "64085aa37c757eea4b933096308c3eee88582ae57b584d736d9aac83c6911fce",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_version_profile.hpp",
+      "original_sha256": "5b6b14626e11fd5b142845af38f9fee5c9c51d77c40f157f4ef55e16dff7c3cc",
+      "exported_sha256": "5b6b14626e11fd5b142845af38f9fee5c9c51d77c40f157f4ef55e16dff7c3cc",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/inventory_adapter.hpp",
+      "original_sha256": "0bbc9bc13b41c9f917c56fc6c62f28618a6300d630ad29ec841273686d66a1af",
+      "exported_sha256": "0bbc9bc13b41c9f917c56fc6c62f28618a6300d630ad29ec841273686d66a1af",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/mailbox.hpp",
+      "original_sha256": "816224010e584e4b77802853e65a62e18f4a594563dafcd43b36b0adcb9523a3",
+      "exported_sha256": "816224010e584e4b77802853e65a62e18f4a594563dafcd43b36b0adcb9523a3",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/outer_adapter.hpp",
+      "original_sha256": "205826ca44ed997ce531957495421726cb37e4dc5ec12f84cea40c665453c17e",
+      "exported_sha256": "205826ca44ed997ce531957495421726cb37e4dc5ec12f84cea40c665453c17e",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/native_trace.hpp",
+      "original_sha256": "6feeafcfcb1dab204ab3ed678b2cdb6d49f14431910c2aaa6d291c43593af5d5",
+      "exported_sha256": "6feeafcfcb1dab204ab3ed678b2cdb6d49f14431910c2aaa6d291c43593af5d5",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/shared/public_runtime_paths.hpp",
+      "original_sha256": "a43d855339f6e22171424f1ff4b928cd4dacfc9b962be467a2bc0184f765ca59",
+      "exported_sha256": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/continuation.hpp",
+      "original_sha256": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
+      "exported_sha256": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/callback_method_contract.cpp",
+      "original_sha256": "59f0299371f64934f660b8ae663e27641df4be773eefba27808f89df0cb2e505",
+      "exported_sha256": "59f0299371f64934f660b8ae663e27641df4be773eefba27808f89df0cb2e505",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_method_binding.hpp",
+      "original_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
+      "exported_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/continuation.cpp",
+      "original_sha256": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
+      "exported_sha256": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/customize_confirmation_adapter.cpp",
+      "original_sha256": "2502bf89e3eff02e79c39fb53d7fc43393306b936744ec4f9f58e9d2c49d644a",
+      "exported_sha256": "2502bf89e3eff02e79c39fb53d7fc43393306b936744ec4f9f58e9d2c49d644a",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/customize_confirmation_adapter.hpp",
+      "original_sha256": "a59f059728767ad649f05c1a00ded2f8a199554bd77eeeb046ea3cd7e4eab101",
+      "exported_sha256": "a59f059728767ad649f05c1a00ded2f8a199554bd77eeeb046ea3cd7e4eab101",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/effect_confirmation.hpp",
+      "original_sha256": "3235884f9d6dd7a2de3afb47363fc5d3546fa9a2f88c9e7daff6478b867f018f",
+      "exported_sha256": "3235884f9d6dd7a2de3afb47363fc5d3546fa9a2f88c9e7daff6478b867f018f",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/drink_inventory_adapter.cpp",
+      "original_sha256": "18445849c2aed92c464aab500a58a356d4479e764d5bee7fe791525a43f192c5",
+      "exported_sha256": "18445849c2aed92c464aab500a58a356d4479e764d5bee7fe791525a43f192c5",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/drink_inventory_adapter.hpp",
+      "original_sha256": "13e9cf925b83c6131798c59992ce1b99f24102f3fdb62690df5eb0acb792b866",
+      "exported_sha256": "13e9cf925b83c6131798c59992ce1b99f24102f3fdb62690df5eb0acb792b866",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/native_layer_context.hpp",
+      "original_sha256": "909887465b6dd5163ef1228e988c0e230f2f7cc940cfe52b9d527ff6eedc229c",
+      "exported_sha256": "909887465b6dd5163ef1228e988c0e230f2f7cc940cfe52b9d527ff6eedc229c",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/error_adapter.cpp",
+      "original_sha256": "ce6c1c8d63170f07bc71079be2809913c7e5402124b7d48f6bf5fb233781392e",
+      "exported_sha256": "ce6c1c8d63170f07bc71079be2809913c7e5402124b7d48f6bf5fb233781392e",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/error_adapter.hpp",
+      "original_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
+      "exported_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_adapter.cpp",
+      "original_sha256": "88b0a7d2787fe3977f51586fdb9d06b1f27177d31238c2523c0c04240c8c43f9",
+      "exported_sha256": "88b0a7d2787fe3977f51586fdb9d06b1f27177d31238c2523c0c04240c8c43f9",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_legal_inputs.hpp",
+      "original_sha256": "846d66130faecd94629e978f1231ee3a21980e17bf459cf87c85b1dc8f61cf6b",
+      "exported_sha256": "846d66130faecd94629e978f1231ee3a21980e17bf459cf87c85b1dc8f61cf6b",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_model_revision.hpp",
+      "original_sha256": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
+      "exported_sha256": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_reference_presence.hpp",
+      "original_sha256": "ad3f55b9aabef5533e597568a34316bd3aa4c047b75f246f74d533818052ca68",
+      "exported_sha256": "ad3f55b9aabef5533e597568a34316bd3aa4c047b75f246f74d533818052ca68",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_card_phase_observation.cpp",
+      "original_sha256": "da154ec9de573bd3ceed3d06f9eafaf399d3a6346326df47c9fd3c29ef6051d2",
+      "exported_sha256": "da154ec9de573bd3ceed3d06f9eafaf399d3a6346326df47c9fd3c29ef6051d2",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_card_phase_observation.hpp",
+      "original_sha256": "e53d4f7382985af515da24e4d6c15dc7cddc1f3a84eae049afdce097db8677a7",
+      "exported_sha256": "e53d4f7382985af515da24e4d6c15dc7cddc1f3a84eae049afdce097db8677a7",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/nullable_int32_storage.hpp",
+      "original_sha256": "32ceb526c3d740c32186db7cd900ca88cf15d83f1339305fc29d71077ed9ad7a",
+      "exported_sha256": "32ceb526c3d740c32186db7cd900ca88cf15d83f1339305fc29d71077ed9ad7a",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_model_observation.cpp",
+      "original_sha256": "0643f7c91df6a2a5b29fe77c8f9cdc31ad82c7c4cb62d8bd6f7f93e31cc36445",
+      "exported_sha256": "0643f7c91df6a2a5b29fe77c8f9cdc31ad82c7c4cb62d8bd6f7f93e31cc36445",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_reference_presence.cpp",
+      "original_sha256": "4e15bfd853f3f75df2f52e6dc7ae3493232ecda31180f7fec077a3f5709371c2",
+      "exported_sha256": "4e15bfd853f3f75df2f52e6dc7ae3493232ecda31180f7fec077a3f5709371c2",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_save_serializer.cpp",
+      "original_sha256": "48205e428e13508a8c884c017f2a144b0e8751bfb83103cb328619b03548b91d",
+      "exported_sha256": "48205e428e13508a8c884c017f2a144b0e8751bfb83103cb328619b03548b91d",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/interval_adapter.cpp",
+      "original_sha256": "e9489960db798229bd603fd0409f87179c5ce09ed8b661d6d1bbbc3c52736ec5",
+      "exported_sha256": "e9489960db798229bd603fd0409f87179c5ce09ed8b661d6d1bbbc3c52736ec5",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/interval_adapter.hpp",
+      "original_sha256": "ac2b17742284594331af86beaeb1b89330209c871476b1542a4c64608a33db8d",
+      "exported_sha256": "ac2b17742284594331af86beaeb1b89330209c871476b1542a4c64608a33db8d",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/inventory_adapter.cpp",
+      "original_sha256": "c15a70317a6caabd3408fc9a15a7a2372e028d7b78c94490059724c7fcdf962a",
+      "exported_sha256": "c15a70317a6caabd3408fc9a15a7a2372e028d7b78c94490059724c7fcdf962a",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/memory_auto_adapter.hpp",
+      "original_sha256": "ba3a503e68fdcdf66ed72306e52c1d74557b57aeb4f48a8f5e0d4da0e22563dd",
+      "exported_sha256": "ba3a503e68fdcdf66ed72306e52c1d74557b57aeb4f48a8f5e0d4da0e22563dd",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/live_loading_adapter.cpp",
+      "original_sha256": "e7ea9de8d88d3edfc34d0fa06423a9db17f66a49e7a5ebd5d0af317e16140286",
+      "exported_sha256": "e7ea9de8d88d3edfc34d0fa06423a9db17f66a49e7a5ebd5d0af317e16140286",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/live_loading_adapter.hpp",
+      "original_sha256": "0b7aae47a0a0e0e14fd83108b55e203518364a3cedfb029e25addb1276d354ad",
+      "exported_sha256": "0b7aae47a0a0e0e14fd83108b55e203518364a3cedfb029e25addb1276d354ad",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/outer_pointer_guard.hpp",
+      "original_sha256": "a617b5ec80a87aa8a16898be966a9b2af7006d41e9b2fe0bb8c9fdc56bdbb9a7",
+      "exported_sha256": "a617b5ec80a87aa8a16898be966a9b2af7006d41e9b2fe0bb8c9fdc56bdbb9a7",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/live_presentation_adapter.cpp",
+      "original_sha256": "f8a9afb87786d09f3d70e1f6eff185d2a8f0abba6a08bfb7b70c24ef775f4ec9",
+      "exported_sha256": "f8a9afb87786d09f3d70e1f6eff185d2a8f0abba6a08bfb7b70c24ef775f4ec9",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/live_presentation_adapter.hpp",
+      "original_sha256": "7299ea54784eb4dd05d42b08e127e6ff3669ac4ae48d1b4d66c2e9449500e1b9",
+      "exported_sha256": "7299ea54784eb4dd05d42b08e127e6ff3669ac4ae48d1b4d66c2e9449500e1b9",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/story_adapter.hpp",
+      "original_sha256": "d9a282509edafb1b4d3289b09f0371751298ab39e750518bd4a8181aa7291d1b",
+      "exported_sha256": "d9a282509edafb1b4d3289b09f0371751298ab39e750518bd4a8181aa7291d1b",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/mailbox.cpp",
+      "original_sha256": "cb12b383c0153271cfa262cd02d6957e9ffbd5ece7eeaf371634fdae4108ebd5",
+      "exported_sha256": "f44e5e8b7aecb283129d8543cf017cccb3c2e8b1f0c2fa7f9e491373b3eb19a0",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/memory_auto_adapter.cpp",
+      "original_sha256": "289c6a9229ca14f9fd5d677ee6f1bc435157cf4ea4fec3e0abf250d60ea5fc6d",
+      "exported_sha256": "289c6a9229ca14f9fd5d677ee6f1bc435157cf4ea4fec3e0abf250d60ea5fc6d",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/mode_navigation_adapter.cpp",
+      "original_sha256": "16636d6a321d8cfe075e0dcb07a29ea95f58967ca7437d9f4f6caabeba880de5",
+      "exported_sha256": "16636d6a321d8cfe075e0dcb07a29ea95f58967ca7437d9f4f6caabeba880de5",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/mode_navigation_adapter.hpp",
+      "original_sha256": "5da4fc1a6882be2d124bef1ad0c13386423f0f3e47cb2f7b7d2ad688123a7003",
+      "exported_sha256": "5da4fc1a6882be2d124bef1ad0c13386423f0f3e47cb2f7b7d2ad688123a7003",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/native_trace.cpp",
+      "original_sha256": "814466524f2e39119578619d99357db7311f4eae424af690932ba7343e8176e3",
+      "exported_sha256": "e8908c0a56ba61601d10c942f79bd3a0f89438383216e302222029d7b86e06b9",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/outer_adapter.cpp",
+      "original_sha256": "5e6353d2f3c300676571c0f3dc991c9c5bca8e7c957ba19c1bf1a2c62bb63db8",
+      "exported_sha256": "df7cbda1227a9062539c4d1f1437c9b893c1f784287fefa90ca7d3a89cecf82c",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_card_ui_adapter.hpp",
+      "original_sha256": "fb46736c92c04b0136c3257415def44dbcce4f8d9b356008fc6aac041998d2e4",
+      "exported_sha256": "fb46736c92c04b0136c3257415def44dbcce4f8d9b356008fc6aac041998d2e4",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_result_adapter.hpp",
+      "original_sha256": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
+      "exported_sha256": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/result_score_notice_adapter.hpp",
+      "original_sha256": "5909b2fd0ce6e1d1e5c11db6ec044fb649c6b0ab5a1d7e0529ef24374298f5b6",
+      "exported_sha256": "5909b2fd0ce6e1d1e5c11db6ec044fb649c6b0ab5a1d7e0529ef24374298f5b6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_effect_view_adapter.hpp",
+      "original_sha256": "5f44b00ef4c5c13e24c5f40bc08831d608cc23bd6f4215db3280fe001b21ac21",
+      "exported_sha256": "5f44b00ef4c5c13e24c5f40bc08831d608cc23bd6f4215db3280fe001b21ac21",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/login_touch.hpp",
+      "original_sha256": "3048a0b0fc4b11ac01351ccd4ee06248181be333b85e99807fb783d59b55b803",
+      "exported_sha256": "3048a0b0fc4b11ac01351ccd4ee06248181be333b85e99807fb783d59b55b803",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/selection_memory_adapter.hpp",
+      "original_sha256": "39ddf49e98c91190661dab25124fe0785b0832d167ec11e9f57b8a1c2d129d7c",
+      "exported_sha256": "39ddf49e98c91190661dab25124fe0785b0832d167ec11e9f57b8a1c2d129d7c",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/reward_drink_capacity_adapter.hpp",
+      "original_sha256": "7bc1c590aad67197b92cb556a9c5c830f1a31aa84f756c7e73f7981617b16685",
+      "exported_sha256": "7bc1c590aad67197b92cb556a9c5c830f1a31aa84f756c7e73f7981617b16685",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/shop_adapter.hpp",
+      "original_sha256": "3e30266f54a96f383d00434d51a652f2d3e57617c79cf26bba6936fce0f34a38",
+      "exported_sha256": "3e30266f54a96f383d00434d51a652f2d3e57617c79cf26bba6936fce0f34a38",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/recommended_replay_adapter.hpp",
+      "original_sha256": "195b6e20e082f2af442f19e5009b523ccdb1065d6164c5ec89f358e66f33246e",
+      "exported_sha256": "195b6e20e082f2af442f19e5009b523ccdb1065d6164c5ec89f358e66f33246e",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/business_start_gate.hpp",
+      "original_sha256": "2ec0f09878ab450cc598bd3d5e4639391d16c197d5948deea0e8fc2cb17722f8",
+      "exported_sha256": "2ec0f09878ab450cc598bd3d5e4639391d16c197d5948deea0e8fc2cb17722f8",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/event_choices_contract.hpp",
+      "original_sha256": "6d39dc239e539b0a00772043985663924681d67ce393db15468eaba372fcbe21",
+      "exported_sha256": "6d39dc239e539b0a00772043985663924681d67ce393db15468eaba372fcbe21",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/outer_pointer_guard.cpp",
+      "original_sha256": "1f71faaebb854bf17298b1cff7eef6e04eaafc3c11b4c250305db29030a98ec4",
+      "exported_sha256": "1f71faaebb854bf17298b1cff7eef6e04eaafc3c11b4c250305db29030a98ec4",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_method_binding.cpp",
+      "original_sha256": "db46020c3b1a6479633d337ef4a87fd49ad743f3f543b7d7dce21639e7cdf5ba",
+      "exported_sha256": "56af5d3ae54bc21b177f0ffdf707dda6d926355eca2137e9698936603f550bf6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_method_contract_table.hpp",
+      "original_sha256": "32f79935fce0d920d69d7a9a43572c6bb93c76958c8e42074ae224a5c271acf6",
+      "exported_sha256": "32f79935fce0d920d69d7a9a43572c6bb93c76958c8e42074ae224a5c271acf6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_public_method_profile.hpp",
+      "original_sha256": "2e74f185dd58ed2985dfe4002636d55e5891927c5f7a39c96c603916c0c85977",
+      "exported_sha256": "2de1a71f2a813616a730671a1b706f44237167584481b86676adc30bebae1924",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_version_profile.cpp",
+      "original_sha256": "614f3a4720eb4992acc714e1e64d5e895f064db6858e94faba5b066b61cf5040",
+      "exported_sha256": "614f3a4720eb4992acc714e1e64d5e895f064db6858e94faba5b066b61cf5040",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp",
+      "original_sha256": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
+      "exported_sha256": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/customize_budget.hpp",
+      "original_sha256": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
+      "exported_sha256": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/reward_group.hpp",
+      "original_sha256": "0738b522034c5e4e6565f58be8f4240d66138390869ce5f7845d79a5ec110213",
+      "exported_sha256": "0738b522034c5e4e6565f58be8f4240d66138390869ce5f7845d79a5ec110213",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/exam_selector_diagnostic.hpp",
+      "original_sha256": "c7e2a617b1fe9f3bc09887c92207ad4887f6d88aa98e6e30b9160bf179562972",
+      "exported_sha256": "c7e2a617b1fe9f3bc09887c92207ad4887f6d88aa98e6e30b9160bf179562972",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_effect_view_adapter.cpp",
+      "original_sha256": "513eb8cedd58ef350a2c612e66d2a988a0758ecb65a8d02a8b06a2484ae4e337",
+      "exported_sha256": "513eb8cedd58ef350a2c612e66d2a988a0758ecb65a8d02a8b06a2484ae4e337",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_lifecycle_adapter.cpp",
+      "original_sha256": "d404084e8ebc96de200543da6f40e404ba39645482b72daff8854ff5cdd26437",
+      "exported_sha256": "c26a44db26e8939b0ac17d83d15a0f2360222f0a3a387ed54ba783ee57c15596",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_selection.hpp",
+      "original_sha256": "0838caedf114b033223098005ed7cfe2c2adcd5c16167a948faef837a5fc7f5b",
+      "exported_sha256": "0838caedf114b033223098005ed7cfe2c2adcd5c16167a948faef837a5fc7f5b",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/produce_result_adapter.cpp",
+      "original_sha256": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
+      "exported_sha256": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/recommended_replay_adapter.cpp",
+      "original_sha256": "cbe87fded17fd0ed4b8d2ee61bf14368f5c919b43cc598e1aa24f030129028b8",
+      "exported_sha256": "cbe87fded17fd0ed4b8d2ee61bf14368f5c919b43cc598e1aa24f030129028b8",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/replay_entry_adapter.cpp",
+      "original_sha256": "bb50326f480d9979b48f8499821f83df2722a56b3a527826873700bb24a4e062",
+      "exported_sha256": "bb50326f480d9979b48f8499821f83df2722a56b3a527826873700bb24a4e062",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/replay_entry_adapter.hpp",
+      "original_sha256": "01d4265ce756c6fa6926703092f914a186059846a4e2b47703e803de7dff4021",
+      "exported_sha256": "01d4265ce756c6fa6926703092f914a186059846a4e2b47703e803de7dff4021",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/result_score_notice_adapter.cpp",
+      "original_sha256": "5fc2947fe461ac4cf251304a9c839ea14fbb4dc7c1f9751774fd66fedab4c53f",
+      "exported_sha256": "5fc2947fe461ac4cf251304a9c839ea14fbb4dc7c1f9751774fd66fedab4c53f",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/reward_drink_capacity_adapter.cpp",
+      "original_sha256": "beeb4a7d5b214afab7eaa7e716efabd006ff4d671f2e612785a43997099941fe",
+      "exported_sha256": "beeb4a7d5b214afab7eaa7e716efabd006ff4d671f2e612785a43997099941fe",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/runtime.cpp",
+      "original_sha256": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
+      "exported_sha256": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/method_parameter_contract.hpp",
+      "original_sha256": "e91d169f4d2dabdd12c96f8f32c160b85f042119b0407a67929f84144d9fbdcd",
+      "exported_sha256": "e91d169f4d2dabdd12c96f8f32c160b85f042119b0407a67929f84144d9fbdcd",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/managed_field_kind.hpp",
+      "original_sha256": "c324c632dc3f69a95de23b9fb35c5a0f0d35ccaa66109f3b7c9ed85627026f36",
+      "exported_sha256": "c324c632dc3f69a95de23b9fb35c5a0f0d35ccaa66109f3b7c9ed85627026f36",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/screen_context.cpp",
+      "original_sha256": "1fb46220438e521d8ce6945601136c6bf59439fb38d9e01da9279ec6547c747a",
+      "exported_sha256": "1fb46220438e521d8ce6945601136c6bf59439fb38d9e01da9279ec6547c747a",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/selection_memory_adapter.cpp",
+      "original_sha256": "b1dfe648fc2b6b94c3e98addb9e11f230431bd49f8cc3b3c08521d4241a73060",
+      "exported_sha256": "b1dfe648fc2b6b94c3e98addb9e11f230431bd49f8cc3b3c08521d4241a73060",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/shop_adapter.cpp",
+      "original_sha256": "b7052eea85d8c640835876531bee73aeaa8c64f55f8f035009046eb1df07c76f",
+      "exported_sha256": "b7052eea85d8c640835876531bee73aeaa8c64f55f8f035009046eb1df07c76f",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/story_adapter.cpp",
+      "original_sha256": "887a5aea071cfd5c7af329afadca65e49efe6bd9713e68e72f441161a1241f82",
+      "exported_sha256": "887a5aea071cfd5c7af329afadca65e49efe6bd9713e68e72f441161a1241f82",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/story_prompt.hpp",
+      "original_sha256": "e33559e35912294585a588e3d6a9c3021538cf2b61dcefcd9078653a0455d6d4",
+      "exported_sha256": "e33559e35912294585a588e3d6a9c3021538cf2b61dcefcd9078653a0455d6d4",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/telemetry_observer/src/il2cpp_api.cpp",
+      "original_sha256": "920f917b95be5cd897733299d62aa89e707b678416d076660470c04741b58942",
+      "exported_sha256": "920f917b95be5cd897733299d62aa89e707b678416d076660470c04741b58942",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/telemetry_observer/src/il2cpp_api.hpp",
+      "original_sha256": "9716f45ff4b35290e47434f935f07cb659f092f68d6290c25fc343d682246622",
+      "exported_sha256": "9716f45ff4b35290e47434f935f07cb659f092f68d6290c25fc343d682246622",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_exam_recorder/src/dllmain.cpp",
+      "original_sha256": "83742986cd020e6303a6794daa8e87950f3893c607f25cad8a8db3441ac603ec",
+      "exported_sha256": "045c0e6a25f5f65df06ad796e2846cf6cde6e4821c1d6310cf84f8046017ea17",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_exam_recorder/src/recorder.hpp",
+      "original_sha256": "0ecc352cd978c5bfc48633a287684d4bdc823a6bcb9a2dc978f28d48fc640041",
+      "exported_sha256": "3f52ed93044695ec0685f32141fa1ab885c44e0746aee0fa2b95c45bf444fe18",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_exam_recorder/src/recorder.cpp",
+      "original_sha256": "c1772a84938e8f67c8640f3391205f0b649eeeef207b28b0873d12231ab6248d",
+      "exported_sha256": "e32756ee70308dcb32ce2d74b0152c8d986d2ecb17f27d2dda47a7e0071c5072",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_exam_recorder/src/validate_use_hand_card_abi.hpp",
+      "original_sha256": "2fbb7fcf326a10b664b25b5b65bd7338ca9d6ecf43a337489852009f63ec8302",
+      "exported_sha256": "2fbb7fcf326a10b664b25b5b65bd7338ca9d6ecf43a337489852009f63ec8302",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_exam_recorder/src/recorder_field_contract.hpp",
+      "original_sha256": "74a5f7a866db86eeec6f535501126d00bc393e320c810d3d9932df4c53768dbc",
+      "exported_sha256": "74a5f7a866db86eeec6f535501126d00bc393e320c810d3d9932df4c53768dbc",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    }
+  ],
+  "files": {
+    "native/runtime_command_bridge/src/audition_identity.hpp": "797d6b92a540ffb0ddb3294080aff24948efc02068c21f60eb8d56158c94fffc",
+    "native/runtime_command_bridge/src/audition_result_adapter.cpp": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+    "native/runtime_command_bridge/src/audition_result_adapter.hpp": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+    "native/runtime_command_bridge/src/audition_retry_adapter.cpp": "430d6d26af324d69ee453b7aa111885c2f4e33986f7d08b88990bd162250e3d9",
+    "native/runtime_command_bridge/src/audition_retry_adapter.hpp": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
+    "native/runtime_command_bridge/src/audition_selection.hpp": "0838caedf114b033223098005ed7cfe2c2adcd5c16167a948faef837a5fc7f5b",
+    "native/runtime_command_bridge/src/bridge.cpp": "a127396e883708625b84fa1f9643b0502af1c5250a2e90b23f6c49df3612b3ac",
+    "native/runtime_command_bridge/src/business_start_gate.hpp": "2ec0f09878ab450cc598bd3d5e4639391d16c197d5948deea0e8fc2cb17722f8",
+    "native/runtime_command_bridge/src/callback_method_contract.cpp": "59f0299371f64934f660b8ae663e27641df4be773eefba27808f89df0cb2e505",
+    "native/runtime_command_bridge/src/callback_method_contract.hpp": "b1076ec110c0f04fa209cf2655c64bca3bdb63bda3e8bbe3386e5c404a580fae",
+    "native/runtime_command_bridge/src/continuation.cpp": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
+    "native/runtime_command_bridge/src/continuation.hpp": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
+    "native/runtime_command_bridge/src/customize_budget.hpp": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
+    "native/runtime_command_bridge/src/customize_confirmation_adapter.cpp": "2502bf89e3eff02e79c39fb53d7fc43393306b936744ec4f9f58e9d2c49d644a",
+    "native/runtime_command_bridge/src/customize_confirmation_adapter.hpp": "a59f059728767ad649f05c1a00ded2f8a199554bd77eeeb046ea3cd7e4eab101",
+    "native/runtime_command_bridge/src/drink_inventory_adapter.cpp": "18445849c2aed92c464aab500a58a356d4479e764d5bee7fe791525a43f192c5",
+    "native/runtime_command_bridge/src/drink_inventory_adapter.hpp": "13e9cf925b83c6131798c59992ce1b99f24102f3fdb62690df5eb0acb792b866",
+    "native/runtime_command_bridge/src/effect_confirmation.hpp": "3235884f9d6dd7a2de3afb47363fc5d3546fa9a2f88c9e7daff6478b867f018f",
+    "native/runtime_command_bridge/src/error_adapter.cpp": "ce6c1c8d63170f07bc71079be2809913c7e5402124b7d48f6bf5fb233781392e",
+    "native/runtime_command_bridge/src/error_adapter.hpp": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
+    "native/runtime_command_bridge/src/event_choices_contract.hpp": "6d39dc239e539b0a00772043985663924681d67ce393db15468eaba372fcbe21",
+    "native/runtime_command_bridge/src/exam_adapter.cpp": "88b0a7d2787fe3977f51586fdb9d06b1f27177d31238c2523c0c04240c8c43f9",
+    "native/runtime_command_bridge/src/exam_adapter.hpp": "63c84113cc2d31e30325a38664e6d593a63755cd244fa03a637d07dd56b4c01f",
+    "native/runtime_command_bridge/src/exam_card_phase_observation.cpp": "da154ec9de573bd3ceed3d06f9eafaf399d3a6346326df47c9fd3c29ef6051d2",
+    "native/runtime_command_bridge/src/exam_card_phase_observation.hpp": "e53d4f7382985af515da24e4d6c15dc7cddc1f3a84eae049afdce097db8677a7",
+    "native/runtime_command_bridge/src/exam_card_selector_family.hpp": "64085aa37c757eea4b933096308c3eee88582ae57b584d736d9aac83c6911fce",
+    "native/runtime_command_bridge/src/exam_legal_inputs.hpp": "846d66130faecd94629e978f1231ee3a21980e17bf459cf87c85b1dc8f61cf6b",
+    "native/runtime_command_bridge/src/exam_model_observation.cpp": "0643f7c91df6a2a5b29fe77c8f9cdc31ad82c7c4cb62d8bd6f7f93e31cc36445",
+    "native/runtime_command_bridge/src/exam_model_observation.hpp": "8a35ebb4316d74635e2722a6197ff45528891cc5ca1c188f090b8e0dc649efef",
+    "native/runtime_command_bridge/src/exam_model_revision.hpp": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
+    "native/runtime_command_bridge/src/exam_reference_presence.cpp": "4e15bfd853f3f75df2f52e6dc7ae3493232ecda31180f7fec077a3f5709371c2",
+    "native/runtime_command_bridge/src/exam_reference_presence.hpp": "ad3f55b9aabef5533e597568a34316bd3aa4c047b75f246f74d533818052ca68",
+    "native/runtime_command_bridge/src/exam_save_serializer.cpp": "48205e428e13508a8c884c017f2a144b0e8751bfb83103cb328619b03548b91d",
+    "native/runtime_command_bridge/src/exam_save_serializer.hpp": "dfb4f709523c9c935910914ca97bfd4ed14d8886f204021e2834e28d2d5ba689",
+    "native/runtime_command_bridge/src/exam_selector_close_owner.hpp": "6634626e31fcf950d4c321320fc991ac3234262e5195c48cb4e7a6b76e6b97f6",
+    "native/runtime_command_bridge/src/exam_selector_diagnostic.hpp": "c7e2a617b1fe9f3bc09887c92207ad4887f6d88aa98e6e30b9160bf179562972",
+    "native/runtime_command_bridge/src/exam_selector_owner.hpp": "6c20c52948165f7c63060af57993d54648c5144b9631e6a3fa3a99db9b2f8bf3",
+    "native/runtime_command_bridge/src/gc_handle_abi.hpp": "07f2d5665bac94ec6e64adfa1627be5e01951ef2dd52113298a7bb17b8c56359",
+    "native/runtime_command_bridge/src/interval_adapter.cpp": "e9489960db798229bd603fd0409f87179c5ce09ed8b661d6d1bbbc3c52736ec5",
+    "native/runtime_command_bridge/src/interval_adapter.hpp": "ac2b17742284594331af86beaeb1b89330209c871476b1542a4c64608a33db8d",
+    "native/runtime_command_bridge/src/inventory_adapter.cpp": "c15a70317a6caabd3408fc9a15a7a2372e028d7b78c94490059724c7fcdf962a",
+    "native/runtime_command_bridge/src/inventory_adapter.hpp": "0bbc9bc13b41c9f917c56fc6c62f28618a6300d630ad29ec841273686d66a1af",
+    "native/runtime_command_bridge/src/live_loading_adapter.cpp": "e7ea9de8d88d3edfc34d0fa06423a9db17f66a49e7a5ebd5d0af317e16140286",
+    "native/runtime_command_bridge/src/live_loading_adapter.hpp": "0b7aae47a0a0e0e14fd83108b55e203518364a3cedfb029e25addb1276d354ad",
+    "native/runtime_command_bridge/src/live_presentation_adapter.cpp": "f8a9afb87786d09f3d70e1f6eff185d2a8f0abba6a08bfb7b70c24ef775f4ec9",
+    "native/runtime_command_bridge/src/live_presentation_adapter.hpp": "7299ea54784eb4dd05d42b08e127e6ff3669ac4ae48d1b4d66c2e9449500e1b9",
+    "native/runtime_command_bridge/src/login_touch.hpp": "3048a0b0fc4b11ac01351ccd4ee06248181be333b85e99807fb783d59b55b803",
+    "native/runtime_command_bridge/src/mailbox.cpp": "f44e5e8b7aecb283129d8543cf017cccb3c2e8b1f0c2fa7f9e491373b3eb19a0",
+    "native/runtime_command_bridge/src/mailbox.hpp": "816224010e584e4b77802853e65a62e18f4a594563dafcd43b36b0adcb9523a3",
+    "native/runtime_command_bridge/src/managed_field_kind.hpp": "c324c632dc3f69a95de23b9fb35c5a0f0d35ccaa66109f3b7c9ed85627026f36",
+    "native/runtime_command_bridge/src/memory_auto_adapter.cpp": "289c6a9229ca14f9fd5d677ee6f1bc435157cf4ea4fec3e0abf250d60ea5fc6d",
+    "native/runtime_command_bridge/src/memory_auto_adapter.hpp": "ba3a503e68fdcdf66ed72306e52c1d74557b57aeb4f48a8f5e0d4da0e22563dd",
+    "native/runtime_command_bridge/src/method_parameter_contract.hpp": "e91d169f4d2dabdd12c96f8f32c160b85f042119b0407a67929f84144d9fbdcd",
+    "native/runtime_command_bridge/src/mode_navigation_adapter.cpp": "16636d6a321d8cfe075e0dcb07a29ea95f58967ca7437d9f4f6caabeba880de5",
+    "native/runtime_command_bridge/src/mode_navigation_adapter.hpp": "5da4fc1a6882be2d124bef1ad0c13386423f0f3e47cb2f7b7d2ad688123a7003",
+    "native/runtime_command_bridge/src/native_layer_context.hpp": "909887465b6dd5163ef1228e988c0e230f2f7cc940cfe52b9d527ff6eedc229c",
+    "native/runtime_command_bridge/src/native_trace.cpp": "e8908c0a56ba61601d10c942f79bd3a0f89438383216e302222029d7b86e06b9",
+    "native/runtime_command_bridge/src/native_trace.hpp": "6feeafcfcb1dab204ab3ed678b2cdb6d49f14431910c2aaa6d291c43593af5d5",
+    "native/runtime_command_bridge/src/nullable_int32_storage.hpp": "32ceb526c3d740c32186db7cd900ca88cf15d83f1339305fc29d71077ed9ad7a",
+    "native/runtime_command_bridge/src/outer_adapter.cpp": "df7cbda1227a9062539c4d1f1437c9b893c1f784287fefa90ca7d3a89cecf82c",
+    "native/runtime_command_bridge/src/outer_adapter.hpp": "205826ca44ed997ce531957495421726cb37e4dc5ec12f84cea40c665453c17e",
+    "native/runtime_command_bridge/src/outer_pointer_guard.cpp": "1f71faaebb854bf17298b1cff7eef6e04eaafc3c11b4c250305db29030a98ec4",
+    "native/runtime_command_bridge/src/outer_pointer_guard.hpp": "a617b5ec80a87aa8a16898be966a9b2af7006d41e9b2fe0bb8c9fdc56bdbb9a7",
+    "native/runtime_command_bridge/src/pc_method_binding.cpp": "56af5d3ae54bc21b177f0ffdf707dda6d926355eca2137e9698936603f550bf6",
+    "native/runtime_command_bridge/src/pc_method_binding.hpp": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
+    "native/runtime_command_bridge/src/pc_method_contract_table.hpp": "32f79935fce0d920d69d7a9a43572c6bb93c76958c8e42074ae224a5c271acf6",
+    "native/runtime_command_bridge/src/pc_public_method_profile.hpp": "2de1a71f2a813616a730671a1b706f44237167584481b86676adc30bebae1924",
+    "native/runtime_command_bridge/src/pc_version_profile.cpp": "614f3a4720eb4992acc714e1e64d5e895f064db6858e94faba5b066b61cf5040",
+    "native/runtime_command_bridge/src/pc_version_profile.hpp": "5b6b14626e11fd5b142845af38f9fee5c9c51d77c40f157f4ef55e16dff7c3cc",
+    "native/runtime_command_bridge/src/pointer_identity.hpp": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
+    "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
+    "native/runtime_command_bridge/src/produce_card_ui_adapter.hpp": "fb46736c92c04b0136c3257415def44dbcce4f8d9b356008fc6aac041998d2e4",
+    "native/runtime_command_bridge/src/produce_effect_view_adapter.cpp": "513eb8cedd58ef350a2c612e66d2a988a0758ecb65a8d02a8b06a2484ae4e337",
+    "native/runtime_command_bridge/src/produce_effect_view_adapter.hpp": "5f44b00ef4c5c13e24c5f40bc08831d608cc23bd6f4215db3280fe001b21ac21",
+    "native/runtime_command_bridge/src/produce_lifecycle_adapter.cpp": "c26a44db26e8939b0ac17d83d15a0f2360222f0a3a387ed54ba783ee57c15596",
+    "native/runtime_command_bridge/src/produce_lifecycle_adapter.hpp": "ef60e27ff482abf67172114c09eac2c0376262f185daa22808bbe41532334004",
+    "native/runtime_command_bridge/src/produce_result_adapter.cpp": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
+    "native/runtime_command_bridge/src/produce_result_adapter.hpp": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
+    "native/runtime_command_bridge/src/recommended_replay_adapter.cpp": "cbe87fded17fd0ed4b8d2ee61bf14368f5c919b43cc598e1aa24f030129028b8",
+    "native/runtime_command_bridge/src/recommended_replay_adapter.hpp": "195b6e20e082f2af442f19e5009b523ccdb1065d6164c5ec89f358e66f33246e",
+    "native/runtime_command_bridge/src/replay_entry_adapter.cpp": "bb50326f480d9979b48f8499821f83df2722a56b3a527826873700bb24a4e062",
+    "native/runtime_command_bridge/src/replay_entry_adapter.hpp": "01d4265ce756c6fa6926703092f914a186059846a4e2b47703e803de7dff4021",
+    "native/runtime_command_bridge/src/result_score_notice_adapter.cpp": "5fc2947fe461ac4cf251304a9c839ea14fbb4dc7c1f9751774fd66fedab4c53f",
+    "native/runtime_command_bridge/src/result_score_notice_adapter.hpp": "5909b2fd0ce6e1d1e5c11db6ec044fb649c6b0ab5a1d7e0529ef24374298f5b6",
+    "native/runtime_command_bridge/src/reward_drink_capacity_adapter.cpp": "beeb4a7d5b214afab7eaa7e716efabd006ff4d671f2e612785a43997099941fe",
+    "native/runtime_command_bridge/src/reward_drink_capacity_adapter.hpp": "7bc1c590aad67197b92cb556a9c5c830f1a31aa84f756c7e73f7981617b16685",
+    "native/runtime_command_bridge/src/reward_group.hpp": "0738b522034c5e4e6565f58be8f4240d66138390869ce5f7845d79a5ec110213",
+    "native/runtime_command_bridge/src/runtime.cpp": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
+    "native/runtime_command_bridge/src/runtime.hpp": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
+    "native/runtime_command_bridge/src/screen_context.cpp": "1fb46220438e521d8ce6945601136c6bf59439fb38d9e01da9279ec6547c747a",
+    "native/runtime_command_bridge/src/screen_context.hpp": "2f271437a9ab35d5a9b441b9baaa88737ef8c8bb9d50167dd97c833237d7321a",
+    "native/runtime_command_bridge/src/selection_memory_adapter.cpp": "b1dfe648fc2b6b94c3e98addb9e11f230431bd49f8cc3b3c08521d4241a73060",
+    "native/runtime_command_bridge/src/selection_memory_adapter.hpp": "39ddf49e98c91190661dab25124fe0785b0832d167ec11e9f57b8a1c2d129d7c",
+    "native/runtime_command_bridge/src/shop_adapter.cpp": "b7052eea85d8c640835876531bee73aeaa8c64f55f8f035009046eb1df07c76f",
+    "native/runtime_command_bridge/src/shop_adapter.hpp": "3e30266f54a96f383d00434d51a652f2d3e57617c79cf26bba6936fce0f34a38",
+    "native/runtime_command_bridge/src/story_adapter.cpp": "887a5aea071cfd5c7af329afadca65e49efe6bd9713e68e72f441161a1241f82",
+    "native/runtime_command_bridge/src/story_adapter.hpp": "d9a282509edafb1b4d3289b09f0371751298ab39e750518bd4a8181aa7291d1b",
+    "native/runtime_command_bridge/src/story_prompt.hpp": "e33559e35912294585a588e3d6a9c3021538cf2b61dcefcd9078653a0455d6d4",
+    "native/runtime_exam_recorder/src/dllmain.cpp": "045c0e6a25f5f65df06ad796e2846cf6cde6e4821c1d6310cf84f8046017ea17",
+    "native/runtime_exam_recorder/src/recorder.cpp": "e32756ee70308dcb32ce2d74b0152c8d986d2ecb17f27d2dda47a7e0071c5072",
+    "native/runtime_exam_recorder/src/recorder.hpp": "3f52ed93044695ec0685f32141fa1ab885c44e0746aee0fa2b95c45bf444fe18",
+    "native/runtime_exam_recorder/src/recorder_field_contract.hpp": "74a5f7a866db86eeec6f535501126d00bc393e320c810d3d9932df4c53768dbc",
+    "native/runtime_exam_recorder/src/validate_use_hand_card_abi.hpp": "2fbb7fcf326a10b664b25b5b65bd7338ca9d6ecf43a337489852009f63ec8302",
+    "native/shared/public_runtime_paths.hpp": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+    "native/telemetry_observer/src/il2cpp_api.cpp": "920f917b95be5cd897733299d62aa89e707b678416d076660470c04741b58942",
+    "native/telemetry_observer/src/il2cpp_api.hpp": "9716f45ff4b35290e47434f935f07cb659f092f68d6290c25fc343d682246622",
+    "premake5.lua": "d3b97fc2d7349b533b776c9eb594abe507558ef96e87b1822fef96d6b18cb1d5",
+    "README.md": "b69f547f8a7abc31b038eee10d877b287783db5c75b0ff9afada3e2b16393f81",
+    "third_party/localify/conanfile.txt": "fc60bdba5ff68ec4818d5ecdd4dfcb4d5d54e7251ee693ee96d72aecd9c2ff92",
+    "third_party/localify/deps/minhook/include/MinHook.h": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
+    "third_party/localify/deps/minhook/LICENSE.txt": "4f21f857550d7be854da6ea5f2da4e6775ca4e3fbb535e4f3d961c47d0bf3335",
+    "third_party/localify/deps/minhook/src/buffer.c": "69045b390e0f18cf149ea0451ae750f389654eb8d2ed7f2f89c7ff04b7909519",
+    "third_party/localify/deps/minhook/src/buffer.h": "175ec5496c020509cf4c7670322b51b5bcd5b63a345bfefc4a19b43675857fa7",
+    "third_party/localify/deps/minhook/src/hde/hde32.c": "2d4d7dd73d609028822aaf71ac05112b83fe6cc2ae2d6d71fa051b3fc6acfc43",
+    "third_party/localify/deps/minhook/src/hde/hde32.h": "754579fbcec5f64fa229646ceecb241c0b7f31c8a0bb12370e604c316c569315",
+    "third_party/localify/deps/minhook/src/hde/hde64.c": "cbf0e86c7effb7e251a7462e2113f2a4b98b4cc9f152cdf5ed944fe4923069ec",
+    "third_party/localify/deps/minhook/src/hde/hde64.h": "fd5b39e2865e12b9525ebda8fd9e9658b341ead5932d1bcb412a189f81ca42ca",
+    "third_party/localify/deps/minhook/src/hde/pstdint.h": "975488009779ea99c7e04b83a160397d5cd7195cb5bf6ad79180805f756c7d00",
+    "third_party/localify/deps/minhook/src/hde/table32.h": "e56f8641bd9133c1b99a1e6555b19eebe7ed663e5ea8de4edbe74ba461161ab4",
+    "third_party/localify/deps/minhook/src/hde/table64.h": "0b6c69ad498e67907e0c574ab06123aee4ec30c99fa181099ea929a8d820bfc1",
+    "third_party/localify/deps/minhook/src/hook.c": "3c7a77fabae8584ecd260251fd975e3131a19c0b236130b41a242ef8d12d1dc1",
+    "third_party/localify/deps/minhook/src/trampoline.c": "48a9a175fd3cc126356b59f9b2264a090d4ee582a9827e19d5293d794ce19f6f",
+    "third_party/localify/deps/minhook/src/trampoline.h": "23681f7768d5dbd23ea14b45ba64e488a337501f23122253c532b05dbed4b85f",
+    "third_party/localify/deps/minhook.lua": "e8750342e1f307a302e972720897d49e87a1692454fa876fa74a1649faf8d0a9",
+    "third_party/localify/deps/rapidjson/include/rapidjson/allocators.h": "b9df93eabab48a45c768d08c826e29adccdc7e5b29860039144354f59f8fe003",
+    "third_party/localify/deps/rapidjson/include/rapidjson/cursorstreamwrapper.h": "a9025aa3ccc52a925db700b328acda46b684ffa81a0b868c18c81858c25b75e4",
+    "third_party/localify/deps/rapidjson/include/rapidjson/document.h": "97bf77e57eb3b07090377025b87e80be7d0c97c0bda264a8370527f7de10bdf8",
+    "third_party/localify/deps/rapidjson/include/rapidjson/encodedstream.h": "c33d79f769976185b733f57f58d945d06a37bd7d8d3a9d23aabe273a16577f25",
+    "third_party/localify/deps/rapidjson/include/rapidjson/encodings.h": "0dba50ea8fb43a10febd574c7c37c3c1d5e9cceb5cf99b095b3f54fe13a5cf6a",
+    "third_party/localify/deps/rapidjson/include/rapidjson/error/en.h": "1a8d7be2fe53cf99ae33bc6cd898b295f44a9ca4f2ca85fc790cb020656dcdbe",
+    "third_party/localify/deps/rapidjson/include/rapidjson/error/error.h": "e331bf77ce1b1196483b985748b0198d54ec163c1d0ff67a4c70b5fda3092841",
+    "third_party/localify/deps/rapidjson/include/rapidjson/filereadstream.h": "5b10ee4c21424cc96d658a4d85eba1220b4badfd06d33c08a8ce73d8e5a9e75f",
+    "third_party/localify/deps/rapidjson/include/rapidjson/filewritestream.h": "b9d55f8f12820c77cdad6f9f297a106dd369bf6f7d6fac13686c298e7e339924",
+    "third_party/localify/deps/rapidjson/include/rapidjson/fwd.h": "cc40734aa1d56bb7bc0aaa593e571d64ba050e10373d9a4c5a9b018890897128",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/biginteger.h": "09c2ff9b1c9ee6a027f3391e7dc17e919a54e70df897b182f9bbc5e212200d4c",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/clzll.h": "b4efc12286bb63284cf24a06ee55d4f200cbb086a023395b408d00d05b829424",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/diyfp.h": "5f521f5634fbda321fa247f727f17f8c6e7feed7f2af0fae10f1fb99de1cc0fb",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/dtoa.h": "26d043754ac9074a2d7aa21f175fa00b35004b67e54594a8f59606681dff6334",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/ieee754.h": "6ee660862dd2a6780fa8aa168a68a613d1ff4dadbc28583eb00d81743e46204c",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/itoa.h": "8ef53210a23ec576a1a0f8227aeb576af29992b0dcb12f641c7747eb4818c9e1",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/meta.h": "9062c3af5ed551b77c411db54126fda83c2b2f6ad03cf9c67a5698edba8f824f",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/pow10.h": "6e69c1c9329e26b5b7aeb3085734c1650a77cf8bfe19bb006e38049439dfd887",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/regex.h": "e60de798735654a7b12805570072a322b8f53ad86b48314fc207ff9936c6cb8b",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/stack.h": "7b59d94588843ff1e45d823d80a002bcb6a6c136ca41ffac4e03b26d38449f7c",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/strfunc.h": "ec6dc0e38f83a2ce98e1978f740759fa52482011a72c9be6c56d8682f7ec3809",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/strtod.h": "307f108f8c47ff280ab9f3274309ab471649e5bc6560b08c294e66ea3c31599a",
+    "third_party/localify/deps/rapidjson/include/rapidjson/internal/swap.h": "4b73639aeb82c64599533996341f38a1d24081e268cb93c0cc14f3d37856251e",
+    "third_party/localify/deps/rapidjson/include/rapidjson/istreamwrapper.h": "8a91bfc41516fdfd7dcc27beda348295fbe4ca63631ff116b5290ae382b14c0d",
+    "third_party/localify/deps/rapidjson/include/rapidjson/memorybuffer.h": "1544201b3c18080f978b9677ec51ce4dc88661ef5836f28ab227fab1a6cc3e67",
+    "third_party/localify/deps/rapidjson/include/rapidjson/memorystream.h": "7807379a5cff9cd88646046e1f8e808daeb410071abc34c9e553eff7c8ad6553",
+    "third_party/localify/deps/rapidjson/include/rapidjson/msinttypes/inttypes.h": "f478d3d2c8827aa29d826c89570819720c413cd14d298e8cefcabe6e218cba7c",
+    "third_party/localify/deps/rapidjson/include/rapidjson/msinttypes/stdint.h": "fcb37b41a2b1ebfa3fc54cf1529b31999b00535f57f0bb8ed9eb148f991cd6bf",
+    "third_party/localify/deps/rapidjson/include/rapidjson/ostreamwrapper.h": "a8eac1221ffb7250a915b6632bc85f84ad9c48d69299d474ef5102df5d09fef2",
+    "third_party/localify/deps/rapidjson/include/rapidjson/pointer.h": "737c570910c932dc8ae9e1457a067f95287322845d4e5a8c3cc6009a5269b7fa",
+    "third_party/localify/deps/rapidjson/include/rapidjson/prettywriter.h": "db8c1651277b0d2e2627267b271f54e0076e9bacc9bd34c89b1e1ef12824a758",
+    "third_party/localify/deps/rapidjson/include/rapidjson/rapidjson.h": "9214287ebfb1d589a19891f2f41271710ed5e15aa9b5a9f39b223658b531d886",
+    "third_party/localify/deps/rapidjson/include/rapidjson/reader.h": "7bf90739d42a9d6d84c5433a57725423d39ebc04b107ef26c3ce5c60abee6fa5",
+    "third_party/localify/deps/rapidjson/include/rapidjson/schema.h": "b7c56c740f40f79edead2584ebc274f911f4d3ebc89b754ac19ef5966269a640",
+    "third_party/localify/deps/rapidjson/include/rapidjson/stream.h": "45d6bed601d70940fca2ebe4bb5bdc49b142d00d4c5b175d824e122e78946643",
+    "third_party/localify/deps/rapidjson/include/rapidjson/stringbuffer.h": "6f30fd0e867f59dfbafee2857ca4c0c3ee6b067240817bf434646a375cea3dc4",
+    "third_party/localify/deps/rapidjson/include/rapidjson/writer.h": "0590c78b9f77889a1fd57d9c598f7f3af60236bfa2e2dfb1bf32c8c2c1e8bcb5",
+    "third_party/localify/deps/rapidjson/license.txt": "55972017b8f8bffee8922b5be4ba582ac401a3b70b5e62a4b8fbea56342b0500",
+    "third_party/localify/deps/rapidjson.lua": "16da08c7389ec908f37b8f5af3fe5aee00207ff27131927b104e6efb0ea08dc1",
+    "third_party/localify/LICENSE": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809",
+    "third_party/localify/LICENSE-INVENTORY.json": "de5d960394f1ddf5a4660c77c7847c3c2923c95a70b02fc567d7b580779cdf71",
+    "third_party/localify/premake5.lua": "9d3285a841c6e59058a0aedd9da6b6ca29229051055ea11f2e3bea7f433ed9f1",
+    "third_party/localify/README.md": "068326a0355ee6be3cec6bec7c822e9fde8e68b93c030a1c16f8728b92491358",
+    "third_party/localify/SOURCE-MANIFEST.json": "d1026eb81959ccfa2e3b097d5974333ee1b9c63f26394ffb255994de89518fba",
+    "third_party/localify/src/console.cpp": "a79dbe6eb9057a2953aea1b7149b8b603ff94507ac8ec8697923e5e2436bcb47",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/args.h": "6a4fe19bc08cb59e1b0b03b4e0f1cbbb7ba545b03ca97bd58df1be3f03f66c55",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/base.h": "0a5f29a922aabcc1c0b88eb41589e7e81cf976bfdf791ef5e059554a7735009a",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/chrono.h": "3c1a18acd2ff72411592966c03b9946672912e028ecb7e815a5fa3c7a20c8545",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/color.h": "b0d47fae81a489722d2069b123fd884451d9ec8d3fa396face8071445ab7e532",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/compile.h": "61be1b1d050f5cb65980fb02cf98a51b3f1199d21d1a79117a1cfb9cd1beea38",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/core.h": "0b5bab04745964219a01a097c9c9975309b198c938abe57a4dd185c8cd24ea12",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/format-inl.h": "088f3753f5c13ecb0306e84af93bcbc98073c44b250a78887805d3f0543bcdb8",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/format.h": "945a683160ce72943a561f92b1e2fab90d65bda469f8cfa7c7417c43cf6f1162",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/os.h": "59a1eedf9749738ac7115a68db27335acfaa06c9cfc3a82faddbfc7a0000d7c9",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/ostream.h": "bac842d4978332248cc178de216d656a8acb29a53b9d5bee7dd38c67fe06c715",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/printf.h": "e6ad20de507cb7b7aa01b935c21275199f3baa1e4075effb06cdaaa9085552e5",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/ranges.h": "572af94b2d6d241d1b172f902b8d71a2a1c2d21b817714ebb27aa9538a2097a0",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/std.h": "82d5eec0f58f95f7344a2721cf8831bbb683df8120a2f825d2dc8d20a33569bf",
+    "third_party/localify/src/deps/fmt-11.0.2/include/fmt/xchar.h": "311fe937070378b98fd2871b5a8bd45ed3dd5ba322fc664cea7d9862e64fedda",
+    "third_party/localify/src/deps/fmt-11.0.2/src/fmt.cc": "6593aea0ff7ee31dc3c3dafbf1f7ec64f196553c18562cd3d988412b525737a8",
+    "third_party/localify/src/deps/fmt-11.0.2/src/format.cc": "4353ca030a88614f525160c6f0116385d91e5d92511cd05c5a79ee8d22cfeb0b",
+    "third_party/localify/src/deps/fmt-11.0.2/src/os.cc": "aa8ddcb4ca04f536020881db031790af67e66ea0d6b05ebf4920f18e8e4c2645",
+    "third_party/localify/src/deps/Joystick/JoystickEvent.h": "f26ee8435527f9b7b5a80edf0a257afae6330220aacc21e318ab01488dc7425e",
+    "third_party/localify/src/deps/nlohmann/json.hpp": "853b2eb3bf7632c949f4a2dd6fb8a629c5ff25cc0059d29c7d21915dc719487f",
+    "third_party/localify/src/deps/nlohmann/json_fwd.hpp": "2b593a42af4ccd269d87b945059cfcd2d00793891ecc887de28ed152280d6967",
+    "third_party/localify/src/deps/UnityResolve/LICENSE": "e7925106b9ace795ae799207b5c530d4764bdb8add878e435c852e92bff53e0d",
+    "third_party/localify/src/deps/UnityResolve/UnityResolve.hpp": "a304e307cdc6823cd142caf49d071dd4a8734a39ab5c0758dfdf043327fbe463",
+    "third_party/localify/src/dllproxy/proxy.cpp": "f894d12552784b32baef4e3b5d5267407db46ebff9e70757b6b8ff31b4f51aed",
+    "third_party/localify/src/dllproxy/version.asm": "0ff2aecab0145245059740249ea169cd490a5fd3f41f161f65ede9393e3a3af6",
+    "third_party/localify/src/dllproxy/version.def": "b6102b1eb5ed6de5e027c788522eefc0021fa071a20a82686fa224be74566a0c",
+    "third_party/localify/src/GakumasLocalify/BaseDefine.h": "860117da50981d7ddec407e389c18c5cd4aaa1ba3355e4c10bad73a3dfd0df69",
+    "third_party/localify/src/GakumasLocalify/camera/baseCamera.cpp": "365d766c2b82195bf24763ab4139cada7505672db3b42388d8f9a8e16bdcb9b9",
+    "third_party/localify/src/GakumasLocalify/camera/baseCamera.hpp": "02f53fcac7d7d7dee03aac1118e95d70bd9e39bfd75fefc055bf274b156f857b",
+    "third_party/localify/src/GakumasLocalify/camera/camera.cpp": "a6905b5bf7330f59d7621d20a37e0710db673ed559dce4bc45420e37deee6687",
+    "third_party/localify/src/GakumasLocalify/camera/camera.hpp": "da0aea1f271eceb03f331ab4d9a739408fbe4bef44737a1cbec3f77d44cd4b4b",
+    "third_party/localify/src/GakumasLocalify/config/Config.cpp": "d8550b92076b019a4a70278ad5179e0000211af1678482928ca8e09627f8d5cd",
+    "third_party/localify/src/GakumasLocalify/config/Config.hpp": "973cb579c6bfc7f980f587ce3ad7a7f1267a9acee4303729da8ad9417448ba34",
+    "third_party/localify/src/GakumasLocalify/Hook.cpp": "f47fb78b01169a8569b615b856277072d4d02c55e5a06bc7133770f06d1894a6",
+    "third_party/localify/src/GakumasLocalify/Hook.h": "75e8e3f063c68e7f6a445a86f9440f0bb269830e2a9a3b18f41f3cd8b9e45fdf",
+    "third_party/localify/src/GakumasLocalify/HookTexture.cpp": "1bbdfe69a080fe128035d4752178bd03686ed31ed76a45025581a242bf06d2fb",
+    "third_party/localify/src/GakumasLocalify/HookTexture.h": "dc6779dc401856d055748f5a2c37a1bd61bac1983bf9c18765c73d9044ba6cc1",
+    "third_party/localify/src/GakumasLocalify/Il2cppUtils.hpp": "4d94912d03ea69b808435359e9cbd128ec9d2548a1320b9ed2a29eedc4515e97",
+    "third_party/localify/src/GakumasLocalify/Local.cpp": "348c773dfe1978c891afc81cea83fd4f8474a86615d217bcb9e7cf2122d3471c",
+    "third_party/localify/src/GakumasLocalify/Local.h": "833faee52f34b2a88564778f159d52874aec484635069d860dcbe118b9796bbe",
+    "third_party/localify/src/GakumasLocalify/Log.cpp": "2ca22ba41c10ac09e91fff7f2d2f9c24b5894af571cc9c95959964b348bfef63",
+    "third_party/localify/src/GakumasLocalify/Log.h": "e04e55195b9825ff04f41e3e48ca529ab291b09040b1a76043d490ce2ac3fd56",
+    "third_party/localify/src/GakumasLocalify/MasterLocal.cpp": "f0e65ee507957e2435b3a224a4127719118f98eb95f4fec69891f441c11dc212",
+    "third_party/localify/src/GakumasLocalify/MasterLocal.h": "be266038662ca9aa515e6a33d7094a8799a632ad4cd8cd71568dbba68bd03831",
+    "third_party/localify/src/GakumasLocalify/Misc.cpp": "278e78cf65af710ef21af06e3adfe4f48356684b0d6893a64b1c57944c07e5b4",
+    "third_party/localify/src/GakumasLocalify/Misc.hpp": "b7bb0ae3cafc33cfb10c8f75109e810e00aa396b1557ef100ccb702054681e9b",
+    "third_party/localify/src/GakumasLocalify/Plugin.cpp": "78fe94bb063a208a6a4417ce269499f85062dce8622b6e02bf4921635b4e9107",
+    "third_party/localify/src/GakumasLocalify/Plugin.h": "ce1bbb8fc7cc6a03e0a353a7479c1512cbe60d002efc445dcf24ca725eda0cb9",
+    "third_party/localify/src/GakumasLocalify/string_parser/StringParser.cpp": "b0dac7485e5a94167db9ef92309cd8129394237563586f1c3de56864c36c2c47",
+    "third_party/localify/src/GakumasLocalify/string_parser/StringParser.hpp": "cee396bcd1ff863835195d210c58d83557fb01eb2b71705ff065c4bd6e80e856",
+    "third_party/localify/src/gkmsGUI/gkmsGUILoop.cpp": "859b59a006bf7fbef8833409d73dbf3c5243d037aa43bd8c37eb4ee0ac794403",
+    "third_party/localify/src/gkmsGUI/gkmsGUILoop.hpp": "0ef579f082d8f404e04fcefe8cacc011353821ad78802e4416f3c8f657ba97cb",
+    "third_party/localify/src/gkmsGUI/gkmsGUIMain.cpp": "8dcb77b9b0657b75f9df2488259b7140ffe0bbf5c63c976b324379d8bf166687",
+    "third_party/localify/src/gkmsGUI/gkmsGUIMain.hpp": "3b4f013be697935139835faf0d2a1c7e53fe48ada11ba569e6c49035b4ca01f5",
+    "third_party/localify/src/gkmsGUI/GUII18n.cpp": "4b73df2109dac51b389fe85f4edb1786a48a2180733f41c3e9f15556769ebc48",
+    "third_party/localify/src/gkmsGUI/GUII18n.hpp": "72021603b7833e64426910460e637e36f646be6ee5abc941bb357c0ac38a5a5a",
+    "third_party/localify/src/gkmsGUI/i18nData/strings_en.hpp": "72b2a68c59c190b356f3b4628ffb068cdea4a5a2d4f3bb22515d1c3ec7827af7",
+    "third_party/localify/src/gkmsGUI/i18nData/strings_ja.hpp": "86e36a84c0e37eec472ae5a7a54d57efc9a32ee4888304c5064de2c73c5f31bd",
+    "third_party/localify/src/gkmsGUI/i18nData/strings_zh-rCN.hpp": "0a1126cc80010b07d9f894857bdab591762935699a4eedfcd6e89ec93d02777b",
+    "third_party/localify/src/gkmsGUI/i18nData/strings_zh-rTW.hpp": "d6778517b2e1f94f624ba8db2d4ceb4af6287ae7daaa6b6cb733c8fa2a9fd00d",
+    "third_party/localify/src/gkmsGUI/i18nData/temp/generate_i18n.py": "701c47a3ffc3d596b269bbef2215ae3e48956f15a1a841882dfee4ef6868de2e",
+    "third_party/localify/src/gkmsTelemetryBootstrap.cpp": "91c77e8bba9a89323bea72643ce81023f68accd6185764787f6b99d0def8be50",
+    "third_party/localify/src/gkmsTelemetryBootstrap.hpp": "9a7cf95fa0640238485ffb033537a104a40a00fa308addf53748387a3b332cd3",
+    "third_party/localify/src/il2cpp/il2cpp_symbols.cpp": "153aaed3fb2c1dca4b1b7d7c357a94884f2992fcd29a3169a27cee4be8927e47",
+    "third_party/localify/src/il2cpp/il2cpp_symbols.hpp": "ca0d990fa9009dfb67366bf7f03752b18d7fa7c453f54a0676b41fd384a4d00f",
+    "third_party/localify/src/imgui/imconfig.h": "c51306af988faf60a79adab9933472e08de161cca54e0ab37824a56435a69fd0",
+    "third_party/localify/src/imgui/imgui.cpp": "02d21a7fa296e85c2ca06d0ac251b855d82088599191c41a9eddbe7fcec1c4a1",
+    "third_party/localify/src/imgui/imgui.h": "b46ed505f4f32ee9dd6730a2586d3d8a3af52528b15bdf4f943ea68bb9a7eb43",
+    "third_party/localify/src/imgui/imgui_demo.cpp": "da0c8dc9176d3330f8cac07ea36b64d01f78e7f9f5f681a9542cb3cbd61660a3",
+    "third_party/localify/src/imgui/imgui_draw.cpp": "ca66fed77bc77cf8ddacf19866879012978d5edb4722cb613e9ee192c04b0721",
+    "third_party/localify/src/imgui/imgui_impl_dx11.cpp": "5e0fbaebf09eed1dbd62ddcb793212be1310ee7e830140b6fcaa9e6f53051858",
+    "third_party/localify/src/imgui/imgui_impl_dx11.h": "cae9037ec12db0b68fa6ef1ba1f14a0b500467b59b56f53881e1544f8317c330",
+    "third_party/localify/src/imgui/imgui_impl_win32.cpp": "c1549e550319759b1cf1bbeaec111692e8fde60dd44acd2b6b0b93bf362e4ec1",
+    "third_party/localify/src/imgui/imgui_impl_win32.h": "799f50c0d0b906e92d9b14d040f4d25ac8ece0f19c722a02fecb1d24a2bfdcb8",
+    "third_party/localify/src/imgui/imgui_internal.h": "edcf771ef3c5add8cf91ebddcc83aa4e76dedde131fe685d5b91a5ff748f3fc2",
+    "third_party/localify/src/imgui/imgui_tables.cpp": "a1d3e4cffc789928b5495b5e5e46ac0659b727bb7a4b81200de502b90c6f0540",
+    "third_party/localify/src/imgui/imgui_widgets.cpp": "275b093040b5c438f4570b07eef005f2ef17871d637ecdfa0bc6dbf16df4fac1",
+    "third_party/localify/src/imgui/imstb_rectpack.h": "bb53504995e983d54b1ae06ea727f0b39647e5e205b4bf7da01343953974951c",
+    "third_party/localify/src/imgui/imstb_textedit.h": "789e1759a06827df0894674c73cb3e40af8b11e6e1c210104155682b68d266f6",
+    "third_party/localify/src/imgui/imstb_truetype.h": "e21e515fb65d853a02efa6f28f97a003aed5f28b33cf174869bd0ac91ed5baeb",
+    "third_party/localify/src/imgui/LICENSE.txt": "29f44af2b6551afda01b8b9ad568fcf650439b2d8cd3b67142b99f4255e1235d",
+    "third_party/localify/src/main.cpp": "59236d8e704d5f37854c5e56ab92d80dfec789f222f1629bf38343b20e95155b",
+    "third_party/localify/src/platformDefine.hpp": "0a79ceceb6d07514bab002518364aeb561709101d0bd84d7d8bc505e659ff5d8",
+    "third_party/localify/src/public_runtime_paths.hpp": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+    "third_party/localify/src/resourceUpdate/resourceUpdate.cpp": "f3c5ba8e1bb74a61c67fcd2861bead1f429ecc98d90a7aaf5de8880ae5bd0a14",
+    "third_party/localify/src/resourceUpdate/resourceUpdate.hpp": "b8a6f39369bfcde66f091161f13194c810692876c0b00c6bc97f3a8ef54ff099",
+    "third_party/localify/src/resourceUpdate/unzip.hpp": "1f214c69bc74823112a59642a9643e05f3cd3c2266fe36fe62fb26c2881a07ef",
+    "third_party/localify/src/runtime_command_bridge_loader.cpp": "2fc33407129509279cc526e8f26d1e5eb6f123bc22f4f720fdc1579490eba090",
+    "third_party/localify/src/runtime_command_bridge_loader.hpp": "13b8223756a464d1f4a523b468f88d0f974a5be49e4416ac51b0467763293d60",
+    "third_party/localify/src/stdinclude.hpp": "972189e19996a7ba8563c8f33ec9e1800c744935c8503d5ae2dd33c11dae4fa3",
+    "third_party/localify/src/steam/steam.cpp": "5c74764e9242469d7859e88a6900e5a42b27c951b4a3485ebddf8c14ffd4fedb",
+    "third_party/localify/src/utils.hpp": "6ab8cd676104c34283bb57a0d9f81ca6a970e5cfdcc2af4bacff8440cae598de",
+    "third_party/localify/src/windowsPlatform.cpp": "b8c6ed87dcd51a6888c8c1167379b69433dfaf8906cbb2f89b0b73be67885dbc",
+    "third_party/localify/src/windowsPlatform.hpp": "c10fc73c41c2a170b87fad6c74075ca6943b320adf033f0e63d816dceb37fca7"
+  },
+  "clean_rebuild_verified": false,
+  "game_io": false,
+  "deployed": false
+}

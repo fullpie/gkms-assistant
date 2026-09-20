@@ -1,0 +1,49 @@
+{
+  "schema": "gkms.public-localify-source-licenses.v1",
+  "components": [
+    {
+      "component": "Gakumas Localify and retained first-party sources",
+      "license": "GPL-3.0",
+      "notice": "LICENSE",
+      "notice_sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+    },
+    {
+      "component": "MinHook and bundled HDE",
+      "license": "BSD notices",
+      "notice": "deps/minhook/LICENSE.txt",
+      "notice_sha256": "4f21f857550d7be854da6ea5f2da4e6775ca4e3fbb535e4f3d961c47d0bf3335"
+    },
+    {
+      "component": "RapidJSON",
+      "license": "MIT and bundled component notices",
+      "notice": "deps/rapidjson/license.txt",
+      "notice_sha256": "55972017b8f8bffee8922b5be4ba582ac401a3b70b5e62a4b8fbea56342b0500"
+    },
+    {
+      "component": "Dear ImGui and bundled stb",
+      "license": "MIT; stb inline notices",
+      "notice": "src/imgui/LICENSE.txt",
+      "notice_sha256": "29f44af2b6551afda01b8b9ad568fcf650439b2d8cd3b67142b99f4255e1235d"
+    },
+    {
+      "component": "UnityResolve",
+      "license": "MIT",
+      "notice": "src/deps/UnityResolve/LICENSE",
+      "notice_sha256": "e7925106b9ace795ae799207b5c530d4764bdb8add878e435c852e92bff53e0d"
+    },
+    {
+      "component": "fmt 11.0.2",
+      "license": "MIT with optional exception",
+      "notice": "src/deps/fmt-11.0.2/include/fmt/format.h",
+      "notice_sha256": "945a683160ce72943a561f92b1e2fab90d65bda469f8cfa7c7417c43cf6f1162"
+    },
+    {
+      "component": "nlohmann JSON bundled 3.11.3",
+      "license": "MIT SPDX notice",
+      "notice": "src/deps/nlohmann/json.hpp",
+      "notice_sha256": "853b2eb3bf7632c949f4a2dd6fb8a629c5ff25cc0059d29c7d21915dc719487f"
+    }
+  ],
+  "external_dependencies": "Conan package sources/notices are resolved by conanfile.txt; they are not bundled in this source archive.",
+  "retained_notices_preserved": true
+}
