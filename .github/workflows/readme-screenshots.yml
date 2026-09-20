@@ -30,7 +30,7 @@ jobs:
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
           sudo apt-get install -y fonts-noto-cjk
-      - name: Capture the unmodified frontend and update README image blocks
+      - name: Capture original UI with the native host adapter omitted
         shell: bash
         run: |
           python - <<'PY'
@@ -60,11 +60,11 @@ jobs:
           }
           copies = {
               'zh-Hant': ('README.md', 'GUI 截圖', '自動培育介面', '設定與安裝畫面',
-                  '直接開啟本專案原始 GUI 前端，以內建離線示範模式擷取；未連接遊戲。畫面中的進度與分數為示範資料，不代表實測成績。'),
+                  '直接開啟本專案原始 GUI 前端，以內建離線示範模式擷取；未載入遊戲連接器，也未連接遊戲。畫面中的進度與分數為示範資料，不代表實測成績。'),
               'en': ('README.en.md', 'GUI screenshots', 'Automated training interface', 'Setup and installation',
-                  'Captured from the actual project frontend using its built-in offline demo, without connecting to the game. Progress and scores shown are sample data, not measured results.'),
+                  'Captured from the actual project frontend using its built-in offline demo, with the native game connector omitted. No game is connected; progress and scores shown are sample data, not measured results.'),
               'ja': ('README.ja.md', 'GUI スクリーンショット', '自動育成画面', '設定・インストール画面',
-                  '本プロジェクトの GUI フロントエンドを実際に開き、内蔵のオフラインデモで撮影しています。ゲームには接続していません。表示される進行状況やスコアはデモ用データであり、実測結果ではありません。'),
+                  '本プロジェクトの GUI フロントエンドを実際に開き、ゲーム接続用アダプターを読み込まずに、内蔵のオフラインデモで撮影しています。ゲームには接続していません。表示される進行状況やスコアはデモ用データであり、実測結果ではありません。'),
           }
           captures = []
           try:
@@ -75,11 +75,18 @@ jobs:
                       errors = []
                       blocked = []
                       def restrict(route):
-                          if urlparse(route.request.url).netloc == urlparse(origin).netloc:
-                              route.continue_()
-                          else:
+                          url = urlparse(route.request.url)
+                          if url.netloc != urlparse(origin).netloc:
                               blocked.append(route.request.url)
                               route.abort()
+                          elif url.path == '/host.js':
+                              # Documentation-only browser isolation: use the existing
+                              # no-host demo branch, not the authenticated game adapter.
+                              # Do not change app.js, its rendering, or production gates.
+                              route.fulfill(status=200, content_type='application/javascript',
+                                  body='/* Offline documentation capture: no native host adapter. */\n')
+                          else:
+                              route.continue_()
                       context.route('**/*', restrict)
                       context.add_init_script('localStorage.setItem("gkms.setup.locale.v4", ' + json.dumps(locale) + ');')
                       page = context.new_page()
@@ -88,7 +95,7 @@ jobs:
                       page.wait_for_function('!!window.GKMS_SETUP_PREVIEW && !!document.querySelector("#controlCard")')
                       page.evaluate('document.fonts.ready')
                       assert page.locator('html').get_attribute('lang') == locale
-                      assert page.evaluate('!window.GKMS_SETUP_HOST && !window.GKMS_PROJECT_HOST')
+                      assert page.evaluate('!window.GKMS_SETUP_HOST && !window.GKMS_PROJECT_HOST && window.GKMS_PROJECT_MODE !== true')
                       assert not errors, errors
                       setup_name = f'gui-setup-{locale}.png'
                       page.screenshot(path=str(output / setup_name), full_page=True, animations='disabled')
@@ -129,21 +136,23 @@ jobs:
           assert source_hashes == {
               p.name: hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sorted(web.iterdir()) if p.is_file()
-          }, 'Application frontend must remain unchanged'
+          }, 'Application frontend source must remain unchanged'
           manifest = {'source_commit': source_commit, 'frontend_sha256': source_hashes,
               'renderer': 'Playwright 1.55.0 / Chromium', 'viewport': [1600, 1200],
-              'native_windows_host_launched': False, 'frontend_modified': False, 'captures': captures}
+              'native_windows_host_launched': False, 'native_host_adapter_loaded': False,
+              'frontend_source_modified': False, 'captures': captures}
           (output / 'gui-capture-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print(json.dumps(manifest, ensure_ascii=False, indent=2))
           PY
       - name: Save screenshots for review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: readme-gui-screenshots
           path: |
             docs/images/gui-*.png
             docs/images/gui-capture-manifest.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
       - name: Commit only documentation and captures
         run: |
