@@ -1,0 +1,156 @@
+name: README GUI screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/readme-screenshots.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: readme-gui-screenshots
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install browser and CJK fonts
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Capture the unmodified frontend and update README image blocks
+        shell: bash
+        run: |
+          python - <<'PY'
+          from functools import partial
+          from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+          from pathlib import Path
+          from threading import Thread
+          from urllib.parse import urlparse
+          import hashlib
+          import json
+          import re
+          import subprocess
+          from playwright.sync_api import sync_playwright
+
+          root = Path.cwd()
+          web = root / 'src/gkms_tool/glass_gui/web'
+          output = root / 'docs/images'
+          output.mkdir(parents=True, exist_ok=True)
+          handler = partial(SimpleHTTPRequestHandler, directory=str(web))
+          server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
+          Thread(target=server.serve_forever, daemon=True).start()
+          origin = f'http://127.0.0.1:{server.server_port}'
+          source_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          source_hashes = {
+              p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+              for p in sorted(web.iterdir()) if p.is_file()
+          }
+          copies = {
+              'zh-Hant': ('README.md', 'GUI 截圖', '自動培育介面', '設定與安裝畫面',
+                  '直接開啟本專案原始 GUI 前端，以內建離線示範模式擷取；未連接遊戲。畫面中的進度與分數為示範資料，不代表實測成績。'),
+              'en': ('README.en.md', 'GUI screenshots', 'Automated training interface', 'Setup and installation',
+                  'Captured from the actual project frontend using its built-in offline demo, without connecting to the game. Progress and scores shown are sample data, not measured results.'),
+              'ja': ('README.ja.md', 'GUI スクリーンショット', '自動育成画面', '設定・インストール画面',
+                  '本プロジェクトの GUI フロントエンドを実際に開き、内蔵のオフラインデモで撮影しています。ゲームには接続していません。表示される進行状況やスコアはデモ用データであり、実測結果ではありません。'),
+          }
+          captures = []
+          try:
+              with sync_playwright() as p:
+                  browser = p.chromium.launch()
+                  for locale, (filename, title, main_alt, setup_alt, caption) in copies.items():
+                      context = browser.new_context(viewport={'width': 1600, 'height': 1200}, device_scale_factor=1)
+                      errors = []
+                      blocked = []
+                      def restrict(route):
+                          if urlparse(route.request.url).netloc == urlparse(origin).netloc:
+                              route.continue_()
+                          else:
+                              blocked.append(route.request.url)
+                              route.abort()
+                      context.route('**/*', restrict)
+                      context.add_init_script('localStorage.setItem("gkms.setup.locale.v4", ' + json.dumps(locale) + ');')
+                      page = context.new_page()
+                      page.on('pageerror', lambda error: errors.append(str(error)))
+                      page.goto(origin + '/index.html', wait_until='networkidle')
+                      page.wait_for_function('!!window.GKMS_SETUP_PREVIEW && !!document.querySelector("#controlCard")')
+                      page.evaluate('document.fonts.ready')
+                      assert page.locator('html').get_attribute('lang') == locale
+                      assert page.evaluate('!window.GKMS_SETUP_HOST && !window.GKMS_PROJECT_HOST')
+                      assert not errors, errors
+                      setup_name = f'gui-setup-{locale}.png'
+                      page.screenshot(path=str(output / setup_name), full_page=True, animations='disabled')
+                      page.evaluate('window.GKMS_SETUP_PREVIEW.showSessionDemo()')
+                      page.wait_for_selector('#cultivationSettings')
+                      assert page.evaluate('window.GKMS_SETUP_PREVIEW.getStatus().demo === true')
+                      assert page.locator('.demo-banner').is_visible()
+                      assert page.locator('[data-action="start"]').is_disabled()
+                      page.evaluate('document.fonts.ready')
+                      assert not errors, errors
+                      assert not blocked, blocked
+                      main_name = f'gui-cultivation-{locale}.png'
+                      page.screenshot(path=str(output / main_name), full_page=True, animations='disabled')
+                      captures.append({'locale': locale, 'setup': setup_name, 'cultivation': main_name,
+                          'page_errors': errors, 'external_requests': blocked, 'game_connected': False,
+                          'builtin_demo': True, 'start_disabled': True})
+                      context.close()
+
+                      section = ('<!-- BEGIN GUI SCREENSHOTS -->\n'
+                          + f'## {title}\n\n'
+                          + f'![{main_alt}](docs/images/{main_name})\n\n'
+                          + caption + '\n\n'
+                          + '<details>\n' + f'<summary>{setup_alt}</summary>\n\n'
+                          + f'![{setup_alt}](docs/images/{setup_name})\n\n'
+                          + '</details>\n<!-- END GUI SCREENSHOTS -->')
+                      path = root / filename
+                      text = path.read_text(encoding='utf-8')
+                      pattern = r'<!-- BEGIN GUI SCREENSHOTS -->.*?<!-- END GUI SCREENSHOTS -->'
+                      if not re.search(pattern, text, re.S):
+                          pattern = r'<!-- GUI screenshot pending:.*?-->'
+                      text, count = re.subn(pattern, lambda _: section, text, count=1, flags=re.S)
+                      assert count == 1, f'Expected one screenshot placeholder in {filename}'
+                      path.write_text(text, encoding='utf-8')
+                  browser.close()
+          finally:
+              server.shutdown()
+              server.server_close()
+          assert source_hashes == {
+              p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+              for p in sorted(web.iterdir()) if p.is_file()
+          }, 'Application frontend must remain unchanged'
+          manifest = {'source_commit': source_commit, 'frontend_sha256': source_hashes,
+              'renderer': 'Playwright 1.55.0 / Chromium', 'viewport': [1600, 1200],
+              'native_windows_host_launched': False, 'frontend_modified': False, 'captures': captures}
+          (output / 'gui-capture-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, ensure_ascii=False, indent=2))
+          PY
+      - name: Save screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: readme-gui-screenshots
+          path: |
+            docs/images/gui-*.png
+            docs/images/gui-capture-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Commit only documentation and captures
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md README.en.md README.ja.md docs/images/gui-*.png docs/images/gui-capture-manifest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs: add actual offline GUI screenshots to all three READMEs'
+          git pull --rebase origin main
+          git push origin HEAD:main
