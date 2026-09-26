@@ -28,15 +28,15 @@ SUPPORTED_NATIVE_FLOW_PAIRS = frozenset(PLAN_EFFECTS)
 _REQUIRED = {"schema", "trial_id", "produce_id", "plan_type", "exam_effect_type", "variant_id", "target_cycles"}
 
 
-def flow_coverage(plan_type, exam_effect_type, produce_id):
+def flow_coverage(plan_type, exam_effect_type, produce_id, *, variant_id=None):
     """Presentation claims are independent of trial authorization and game state."""
     pair = (plan_type, exam_effect_type)
     supported = pair in _PAIRS and produce_id in ("produce-004", "produce-005")
-    trained = pair == _FULLPOWER and supported
+    trained = supported and (pair == _FULLPOWER or variant_id == "rl_shared_iql")
     return {"supported": supported, "trained_flow_covered": trained,
-            "experimental": supported and not trained,
+            "experimental": supported and (not trained or variant_id == "rl_shared_iql"),
             "plan_type": plan_type, "exam_effect_type": exam_effect_type, "produce_id": produce_id,
-            "label": ("全力訓練範圍" if trained else "跨流派推論；本流派尚未納入這版權重訓練" if supported else "尚未支援的模式或流派"),
+            "label": (("六流派共用離線訓練；附屬決策覆蓋有缺口" if variant_id == "rl_shared_iql" else "全力訓練範圍") if trained else "跨流派推論；本流派尚未納入這版權重訓練" if supported else "尚未支援的模式或流派"),
             "quality_accepted": False}
 
 
@@ -99,7 +99,7 @@ def _read_config(environment_path):
     _require(config["schema"] == SCHEMA and _text(config["trial_id"]) and len(config["trial_id"]) <= 128,
              "Local flow trial schema or trial_id is invalid")
     _require(config["produce_id"] in ("produce-004", "produce-005")
-             and config["variant_id"] in ("baseline", "integrated")
+             and config["variant_id"] in ("baseline", "integrated", "rl_shared_iql")
              and type(config["plan_type"]) is str and type(config["exam_effect_type"]) is str
              and (config["plan_type"], config["exam_effect_type"]) in _PAIRS,
              "Local flow trial config mode, model variant, or symbolic flow is unsupported")
@@ -140,7 +140,7 @@ class LiveFlowScope:
 
 def resolve_live_flow_scope(*, variant_id, produce_id, idol_card_id, plan_type, exam_effect_type, target_cycles=None):
     """Bind any represented flow; keep training coverage and trial claims separate."""
-    _require(variant_id in ("baseline", "integrated"), "Explicit baseline or integrated model required")
+    _require(variant_id in ("baseline", "integrated", "rl_shared_iql"), "Explicit registered BC or private RL model required")
     _require(produce_id in ("produce-004", "produce-005"), "These two completed models cover NIA Pro/Master only")
     _require(_text(idol_card_id), "A concrete idol_card_id is required for the live model scope")
     _require(type(plan_type) is str and type(exam_effect_type) is str
@@ -151,7 +151,7 @@ def resolve_live_flow_scope(*, variant_id, produce_id, idol_card_id, plan_type, 
     reference = file_stamp = trial_id = None
     requested = {"variant_id": variant_id, "produce_id": produce_id, "plan_type": plan_type,
                  "exam_effect_type": exam_effect_type, "idol_card_id": idol_card_id}
-    trained = (plan_type, exam_effect_type) == _FULLPOWER
+    trained = variant_id == "rl_shared_iql" or (plan_type, exam_effect_type) == _FULLPOWER
     if environment_path is not None:
         config, reference, file_stamp = _read_config(environment_path)
         for key in ("variant_id", "produce_id", "plan_type", "exam_effect_type"):
@@ -161,7 +161,7 @@ def resolve_live_flow_scope(*, variant_id, produce_id, idol_card_id, plan_type, 
         _require(target_cycles is None or target_cycles == 1, "Local flow trial permits exactly one target cycle")
         target_cycles, trial_id = 1, config["trial_id"]
     binding = {"schema": BINDING_SCHEMA, **requested, "flow": "|".join((produce_id, plan_type, exam_effect_type)),
-        "experimental": not trained or environment_path is not None, "trained_flow_covered": trained,
+        "experimental": variant_id == "rl_shared_iql" or not trained or environment_path is not None, "trained_flow_covered": trained,
         "trial_id": trial_id, "config_reference": reference, "target_cycles": target_cycles,
         "training_admitted": False, "policy_quality_accepted": False, "workflow_acceptance_claimed": False}
     scope = LiveFlowScope(binding, environment_path, file_stamp, _authority=_SEAL)

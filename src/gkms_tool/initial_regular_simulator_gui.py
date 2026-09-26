@@ -2864,7 +2864,7 @@ class InitialRegularLiveRequest:
             raise ValueError("plan2_max_actions must be a positive integer")
         if self.audition_strategy not in {"stable_clear", "highest_available"}:
             raise ValueError("audition_strategy must be stable_clear or highest_available")
-        if self.exam_policy_variant not in (None, "baseline", "integrated"):
+        if self.exam_policy_variant not in (None, "baseline", "integrated", "rl_shared_iql"):
             raise ValueError("exam_policy_variant must be baseline or integrated")
         if self.plan2_policy_bundle_path is not None:
             object.__setattr__(
@@ -3483,6 +3483,7 @@ def format_initial_regular_live_view(
     blockers = () if readiness is None else readiness.blockers
     page = "unknown" if readiness is None else readiness.current_page
     action_count = 0
+    exam_action_count = None
     recent = "尚無動作"
     stop_reason = "尚未停止"
     diff_summary = "無預測差異"
@@ -3492,6 +3493,9 @@ def format_initial_regular_live_view(
     if progress is not None:
         page = str(progress.get("current_page", page))
         action_count = int(progress.get("outer_action_count", 0))
+        if (page == PAGE_EXAM and type(progress.get("exam_action_count")) is int
+                and progress["exam_action_count"] >= 0):
+            exam_action_count = progress["exam_action_count"]
         recent_step = progress.get("recent_step")
         if isinstance(recent_step, Mapping):
             target = recent_step.get("target")
@@ -3504,6 +3508,7 @@ def format_initial_regular_live_view(
         if isinstance(raw_monitor, Mapping):
             monitor_snapshot = dict(raw_monitor)
     if result is not None:
+        exam_action_count = None
         if isinstance(getattr(result, "terminal_bookkeeping", None), Mapping):
             terminal_bookkeeping = deepcopy(dict(result.terminal_bookkeeping))
         action_count = _live_result_action_count(result)
@@ -3556,7 +3561,8 @@ def format_initial_regular_live_view(
         current_page_text=_LIVE_PAGE_LABELS.get(page, cultivation_page_label(
             page, None if monitor_snapshot is None else monitor_snapshot.get("native_screen_type"),
         )),
-        action_count_text=f"動作數：{action_count}",
+        action_count_text=(f"演出已完成動作：{exam_action_count}" if exam_action_count is not None
+                           else f"動作數：{action_count}"),
         recent_action_text=f"最近動作：{recent}",
         stop_reason_text=f"停止原因：{stop_reason}",
         diff_summary_text=f"差異摘要：{diff_summary}",

@@ -1,51 +1,38 @@
-# GKMS Assistant
+# GKMS Assistant 0.2.0
 
 [繁體中文](README.md) · **English** · [日本語](README.ja.md)
 
-A **Windows assistant for automated training runs** in Gakuen Idolmaster (学園アイドルマスター). Choose an idol, mode, and number of runs through a simple GUI, then let the model handle the run while you follow its progress.
-
-**Current version: 0.1.1** · **[Download the latest release](https://github.com/fullpie/gkms-assistant/releases/latest)**
+An automated cultivation assistant for the PC version of Gakuen Idolmaster. A shared deep-learning RL model handles exam cards, drinks and secondary choices. The existing DLL reads game state and executes each action.
 
 <!-- BEGIN GUI SCREENSHOTS -->
-## GUI screenshots
-
-![Automated training interface](docs/images/gui-cultivation-en.png)
-
-Captured from the actual project frontend using its built-in offline demo, with the native game connector omitted. No game is connected; progress and scores shown are sample data, not measured results.
-
 <details>
-<summary>Setup and installation</summary>
+<summary>Interface preview</summary>
 
+![Automated cultivation](docs/images/gui-cultivation-en.png)
 ![Setup and installation](docs/images/gui-setup-en.png)
 
+Retained screenshots from the earlier offline demo; displayed values are not measured results. Version 0.2 uses the shared RL exam model.
 </details>
 <!-- END GUI SCREENSHOTS -->
 
 ## Features
 
-- **Automated runs:** N.I.A. Pro / Master, idol selection, consecutive runs, and progress tracking.
-- **Two policy options:** a primary behavior-cloning (BC) model with supporting strategies, or an integrated BC model.
-- **Three interface languages:** Traditional Chinese, English, and Japanese, with required-module installation and optional game translation.
+- Idol selection, cultivation, exams, rewards and return to Home.
+- One shared exam model for six play styles, conditioned on mode and exam stage.
+- Game recommendations and existing rules for support and memory cards, with card locks.
+- Current model, progress, stop reasons and an uncalibrated exam score estimate.
+- Integrated game launcher, optional translation, control-module installation and GUI updates.
 
-> Model training and primary offline validation currently focus on the Full Power (全力) playstyle in N.I.A. Pro / Master. Other selectable playstyles have not received equivalent training and validation.
+The model covers N.I.A. Pro and Master. Live validation varies by mode and play style; some secondary-choice data remains sparse. It has not demonstrated consistent improvement over the previous BC models, and does not guarantee wins or high scores. Weekly cultivation choices retain the existing strategy. Exam weights stay fixed during a run; the app does not train or replace them automatically. BC selection is disabled.
 
 ## Getting started
 
-**Requirements:** Windows x64, Microsoft Edge WebView2 Runtime, and .NET Framework 4.7.2 or later.
+1. Download the full Windows package from [Releases](https://github.com/fullpie/gkms-assistant/releases) and extract it completely.
+2. Start `GKMS-Assistant.exe`, select your game folder and install the required control components.
+3. Select an idol, mode and run count, review the card setup, then start.
 
-1. Download the full user package, `gkms-assistant-0.1.1-windows-x64.zip`, from [Releases](https://github.com/fullpie/gkms-assistant/releases/latest), not the GUI update or source archive.
-2. Extract the entire archive and run `GKMS-Assistant.exe`.
-3. Select the game folder in Settings and install the required control module before starting a run. Game translation is optional.
+Requires Windows x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.7.2 or later. The GUI runs in its own window with normal user privileges; game maintenance may request administrator permission. Keep the entire application folder together. Use `恢復 GUI.cmd` if a GUI update cannot start.
 
-## Roadmap
+The public package includes CPU inference dependencies; Python and an NVIDIA GPU are not required. It excludes private research tools, account data, training replays, test DLLs and the private native-simulation loadout search.
 
-- **Reinforcement learning (RL):** introduce RL training to improve decisions and scoring performance.
-- **All-mode support:** gradually expand to every training mode and playstyle, with the corresponding strategies and validation.
-
-These are development goals, not features already supported in 0.1.
-
-## Development and licensing
-
-[Development and packaging](docs/development.md) · [License notice](NOTICE.txt)
-
-All rights reserved for original project portions; no additional open-source license is granted. Third-party components retain their respective licenses.
+Original project portions are all rights reserved. Third-party licenses remain applicable. See [build documentation](docs/public-gui-packaging.md) for developer instructions.

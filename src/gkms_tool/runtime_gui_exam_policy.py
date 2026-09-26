@@ -34,8 +34,8 @@ from .training_artifact_io import canonical_json_bytes, sha256_file
 
 SECONDARY_POLICY_ID = "gui-exam-bc-v1"
 LOADER_COMPATIBILITY_REFERENCE = {
-    "path": str(Path(__file__).resolve().parents[2] / "var/research/post_update_live_20260919/runtime_loader_compat_v2/compatibility.json"),
-    "sha256": "bc8b0260fa7bb0e2dd29ce7330ee630137e6ea93065093fe2523c80cad86d174"}
+    "path": str(Path(__file__).resolve().parents[2] / "var/research/rl_host_integration_20260922/loader_compat_v1/compatibility.json"),
+    "sha256": "3bc92dfc64f9b81c790bb604325838e4b5015e76e3efbae7d400445eb82c654b"}
 RUNTIME_MASTER_SOURCE_REFERENCE = {
     "path": str(Path(__file__).resolve().parents[2] / "var/research/public_delivery_20260920/master_12b_current_audit_v1/inference_source_receipt.json"),
     "sha256": "d11c0f8c2316e697f40c6a6c82db0bfcc87d1b26b1fe6a1d1c3a22c9dbab81f1"}
@@ -76,8 +76,34 @@ def _scope(produce_id, idol_card_id, variant_id):
     return idol, scope
 
 
+def _private_runtime_compatibility():
+    """Explicit private source proof; public installations never read it."""
+    from .application_paths import public_installation
+    if public_installation():
+        return None
+    from .private_runtime_sources import private_runtime_io_reference
+    return private_runtime_io_reference()
+
+
 def preflight_live_exam_policy(variant_id, *, produce_id, idol_card_id, native_capabilities, execution_master=None):
     """Read-only start check; absent current Master evidence stays explicit."""
+    if variant_id == "rl_shared_iql":
+        descriptor = get_gui_exam_policy(variant_id, refresh=True)
+        blockers = []
+        binding = None
+        try:
+            required = {"exam.model_observation.v1", "exam.continuation"}
+            if not required.issubset(set(native_capabilities or ())):
+                raise ValueError("Current DLL lacks complete model observation/continuation capabilities")
+            policy = build_live_exam_policy(variant_id, produce_id=produce_id,
+                idol_card_id=idol_card_id, run_id="private-rl-read-only-preflight")
+            binding = policy.validate_source_execution_master(execution_master)
+        except (OSError, ValueError, TypeError, KeyError, RuntimeError) as error:
+            blockers.append(str(error))
+        return {"variant_id": variant_id, "model_sha256": descriptor.get("model_sha256"),
+            "artifact_available": descriptor.get("artifact_available", False), "current_master_bound": binding is not None,
+            "ready": not blockers, "blockers": blockers, "live_workflow_verified": False, "input_submitted": False,
+            "master_binding": None if binding is None else binding["provenance"]}
     blockers = []
     descriptor = get_gui_exam_policy(variant_id, refresh=True)
     try:
@@ -90,8 +116,12 @@ def preflight_live_exam_policy(variant_id, *, produce_id, idol_card_id, native_c
         if execution_master is None:
             raise ValueError("Current native MasterManager observation is not yet available")
         from .portable_model_assets import load_portable_model_runtime
-        portable = load_portable_model_runtime(variant_id)
-        catalog = portable.catalog if portable is not None else VerifiedLiveMasterCatalog(descriptor["specification"]["contract_set"])
+        if _private_runtime_compatibility() is not None:
+            catalog = build_live_exam_policy(variant_id, produce_id=produce_id, idol_card_id=idol_card_id,
+                run_id="private-BC-read-only-preflight").catalog
+        else:
+            portable = load_portable_model_runtime(variant_id)
+            catalog = portable.catalog if portable is not None else VerifiedLiveMasterCatalog(descriptor["specification"]["contract_set"])
         binding = catalog.resolve(execution_master, produce_id)
     except (OSError, ValueError, TypeError, KeyError) as error:
         blockers.append(str(error)); binding = None
@@ -109,11 +139,15 @@ class RuntimeGuiExamPolicy:
         self.idol, self.flow_scope = _scope(produce_id, idol_card_id, variant_id)
         self.produce_id, self.idol_card_id, self.run_id = produce_id, idol_card_id, run_id
         self.variant_id = variant_id
-        descriptor = get_gui_exam_policy(variant_id, refresh=True)
+        # This pure constructor remains useful to historical offline audits.
+        # The public live factory and gateway both reject BC activation.
+        from .gui_exam_models import get_archived_exam_policy
+        descriptor = get_archived_exam_policy(variant_id, refresh=True)
         if descriptor.get("artifact_available") is not True:
             raise ValueError(descriptor.get("diagnostic") or descriptor.get("reason") or "Model artifact unavailable")
         from .portable_model_assets import load_portable_model_runtime
-        portable = load_portable_model_runtime(variant_id)
+        private_runtime_proof = _private_runtime_compatibility()
+        portable = None if private_runtime_proof is not None else load_portable_model_runtime(variant_id)
         self.portable_manifest_reference = None
         original_model_sha256 = descriptor["model_sha256"]
         loader_receipt_sha256 = LOADER_COMPATIBILITY_REFERENCE["sha256"]
@@ -126,7 +160,12 @@ class RuntimeGuiExamPolicy:
             loader_receipt_sha256 = portable.runtime_model_compatibility["source_loader_receipt_sha256"]
         else:
             specification = descriptor["specification"]
-            self.loader_compatibility = load_runtime_loader_compatibility(LOADER_COMPATIBILITY_REFERENCE)
+            if private_runtime_proof is None:
+                self.loader_compatibility = load_runtime_loader_compatibility(LOADER_COMPATIBILITY_REFERENCE)
+            else:
+                from devtools.rl.import_qualified_io_equivalence import load_compatibility
+                self.loader_compatibility = load_compatibility(private_runtime_proof)
+                loader_receipt_sha256 = private_runtime_proof["sha256"]
             self.source_resolver = self.loader_compatibility.make_source_resolver()
             self.runtime_source = load_runtime_master_source(RUNTIME_MASTER_SOURCE_REFERENCE)
             self.encoder = RuntimeMasterFeatureEncoder(specification["contract_set"], specification["original_shared_encoder"],
@@ -397,7 +436,13 @@ def _actual_secondary_target(snapshot, names, index, prepared):
 
 
 def build_live_exam_policy(variant_id, *, produce_id, idol_card_id, run_id):
-    return RuntimeGuiExamPolicy(variant_id, produce_id=produce_id, idol_card_id=idol_card_id, run_id=run_id)
+    if variant_id == "rl_shared_iql":
+        try:
+            from .runtime_rl_exam_policy import RuntimeSharedActorPolicy
+        except ImportError as error:
+            raise ValueError("RL 推論依賴尚未就緒：" + str(error)) from error
+        return RuntimeSharedActorPolicy(produce_id=produce_id, idol_card_id=idol_card_id, run_id=run_id)
+    raise ValueError("BC 演出模型已停用；保留舊模型供歷史比較，不得用來開始或續跑新版實機流程。")
 
 
 __all__ = ["build_live_exam_policy", "preflight_live_exam_policy", "RuntimeGuiExamPolicy",

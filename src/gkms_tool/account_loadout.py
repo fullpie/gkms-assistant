@@ -421,7 +421,9 @@ def recommend_initial_loadouts(snapshot: AccountInventorySnapshot, loadout: Mapp
                                constraints: LoadoutConstraints = LoadoutConstraints(),
                                idol_card_id: str | None = None, produce_id: str | None = None,
                                catalog=None, prior=None, database: Path | None = None,
-                               limit: int = 3, _include_memory: bool = True) -> tuple[InitialLoadoutRecommendation, ...]:
+                               limit: int = 3, _include_memory: bool = True,
+                               now: datetime | None = None,
+                               use_memory_prior: bool = True) -> tuple[InitialLoadoutRecommendation, ...]:
     """Usable bounded baseline, explicitly not a whole-run score predictor.
 
     Ranks known initial stats/growth/stamina/P and deterministic SP bonuses in
@@ -429,12 +431,18 @@ def recommend_initial_loadouts(snapshot: AccountInventorySnapshot, loadout: Mapp
     evidence adds a within-pool relative-rank preference. Shortlists (10 own
     supports, 12 memories, 3 rentals, 24 combinations per component) bound the
     search and always retain user locks. Future event rewards are not invented.
+    RL callers may explicitly disable the old memory BC prior for shortlist
+    construction; their separate frozen model supplies the final ordering.
     """
     from .leaderboard_memory_loadout_prior import DEFAULT_PRIOR_ARTIFACT, load_memory_loadout_prior_artifact
     from .master_db import DEFAULT_DATABASE, get_idol_profile
     from .passive_catalog import MasterPassiveCatalog
     database = DEFAULT_DATABASE if database is None else database
     catalog = MasterPassiveCatalog.load() if catalog is None else catalog
+    if type(use_memory_prior) is not bool:
+        raise ValueError("use_memory_prior must be an explicit boolean")
+    if not use_memory_prior and prior is not None:
+        raise ValueError("cannot supply a disabled memory prior")
     idol_card_id = str(loadout.get("idol_card_id", "")) if idol_card_id is None else idol_card_id
     produce_id = str(loadout.get("produce_id", "")) if produce_id is None else produce_id
     if loadout.get("account_scope") != snapshot.account_scope:
@@ -447,7 +455,7 @@ def recommend_initial_loadouts(snapshot: AccountInventorySnapshot, loadout: Mapp
     scope = dict(produce_id=produce_id, plan_type=plan_type,
                  exam_effect_type=profile.exam_effect_type, idol_card_id=idol_card_id)
     from .portable_outer_assets import asset_directory
-    if not _include_memory:
+    if not _include_memory or not use_memory_prior:
         prior = None
     elif prior is None and asset_directory() is not None:
         # Public recommendation requires its verified aggregate prior. Missing
@@ -611,7 +619,7 @@ def recommend_initial_loadouts(snapshot: AccountInventorySnapshot, loadout: Mapp
                 selection = LoadoutSelection(idol_card_id, selected_supports, rental, selected_memories,
                                              digest, snapshot.account_scope, produce_id)
                 try:
-                    validate_selection(snapshot, selection, constraints=constraints,
+                    validate_selection(snapshot, selection, constraints=constraints, now=now,
                         section=None if _include_memory else "support")
                 except ValueError:
                     continue

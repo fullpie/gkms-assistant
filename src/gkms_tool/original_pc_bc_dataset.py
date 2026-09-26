@@ -21,6 +21,8 @@ import sys
 from .training_artifact_io import canonical_json_bytes
 from .training_quarantine import CURRENT_INDEX, load_current_training_quarantine
 from .canonical_training_labels import PLAN_BY_NATIVE_VALUE, EFFECT_BY_NATIVE_VALUE, STAGE_BY_NATIVE_VALUE, STAGE_BY_NAME
+from .capture_qualification import (CAPTURE_REQUIREMENTS as _CAPTURE_REQUIREMENTS, SOURCE_FULL,
+    capture_qualification_requirements, capture_profile_errors)
 
 SCHEMA = "gkms.original-pc-main-bc-ref-index.v1"
 CASE_SCHEMA = "gkms.original-pc-main-bc-case-ref.v1"
@@ -34,12 +36,6 @@ _CASE_KEYS = (
     "original_index", "episode_id", "source_master_hash", "produce_id",
     "stage_type", "fixed_split", "source", "qualification", "event_index",
     "main_decisions", "secondary_decisions", "source_actions",
-)
-_CAPTURE_REQUIREMENTS = (
-    "source_verified_against_original_export", "source_spine_passed",
-    "required_responses_covered", "scoped_owned_capture_verified",
-    "case_cleanup_passed", "parent_membership_passed", "parent_shared_cleanup_passed",
-    "snapshot_hash_and_candidate_rng_verified",
 )
 
 
@@ -311,8 +307,11 @@ def _case_metadata(payload, case):
     contract = reader.read(case["feature_contract"])
     fixed = selected["fixed_split"]
     spec = qualification["specification"]
+    profile_observer = (reader.read(qualification["observer_validation"])
+        if qualification.get("capture_profile") == SOURCE_FULL else None)
     if (qualification.get("status") != "file-validated"
-            or any(qualification.get(k) is not True for k in _CAPTURE_REQUIREMENTS)
+            or any(qualification.get(k) is not True for k in capture_qualification_requirements(qualification))
+            or capture_profile_errors(qualification, profile_observer)
             or qualification.get("capture_qualification_gaps") != []
             or qualification.get("source_quarantined") is not False
             or qualification["episode_id"] != case["episode_id"]

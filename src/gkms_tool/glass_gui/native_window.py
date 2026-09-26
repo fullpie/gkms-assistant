@@ -34,7 +34,7 @@ class NativeWindow:
     @classmethod
     def open(cls, url, root, state, *, package=None, capture=False, probe_close=False):
         from ..application_paths import public_installation
-        from ..app_version import DISPLAY_VERSION
+        from ..app_version import DISPLAY_VERSION, VERSION
         parts=urlsplit(url)
         token=parse_qs(parts.fragment).get('token',[])
         if (parts.scheme!='http' or parts.hostname!='127.0.0.1' or not parts.port or parts.path!='/'
@@ -44,7 +44,7 @@ class NativeWindow:
         root,state=Path(root).resolve(),Path(state).resolve()
         if package is None:
             package=(root/'ui_host' if public_installation(root)
-                     else root/'var/native/gui_webview2/candidate_v6_dpi')
+                     else root/'var/native/gui_webview2'/VERSION)
         executable=verify_window_package(package)
         data=state/'native_window';data.mkdir(parents=True,exist_ok=True)
         report=data/('window-'+uuid.uuid4().hex+'.json')

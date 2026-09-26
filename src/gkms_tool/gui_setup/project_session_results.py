@@ -55,7 +55,7 @@ class ProjectSessionResults(SessionResults):
             policy = monitor['exam_policy']
             if (monitor.get('source') != 'dll' or not isinstance(policy, Mapping)
                     or policy.get('loaded') is not True or policy.get('run_id') != run_id
-                    or policy.get('variant_id') not in ('baseline', 'integrated')
+                    or policy.get('variant_id') not in ('baseline', 'integrated', 'rl_shared_iql')
                     or not isinstance(policy.get('label'), str) or not policy['label'].strip()
                     or len(policy['label']) > 256 or not isinstance(policy.get('model_sha256'), str)
                     or not re.fullmatch(r'[a-fA-F0-9]{64}', policy['model_sha256'])):

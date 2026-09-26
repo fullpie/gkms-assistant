@@ -33,7 +33,7 @@ LAUNCHER_CALLBACKS = frozenset(('launcher-launch','launcher-sync','launcher-repa
 INSTALL_CALLBACKS = frozenset(('detect', 'choose-folder', 'choose-control', 'install-control', 'install-translation', 'restore-all', 'recover',
                                'preview-install-control', 'preview-install-translation', 'preview-restore-all', 'preview-recover'))
 UPDATE_CALLBACKS = frozenset(('app-update-check', 'app-update-download', 'app-update-apply', 'app-update-rollback'))
-LOADOUT_CALLBACKS = frozenset(('loadout.status', 'loadout.refresh', 'loadout.read', 'loadout.recommend', 'loadout.constraints', 'loadout.apply'))
+LOADOUT_CALLBACKS = frozenset(('loadout.status', 'loadout.refresh', 'loadout.read', 'loadout.recommend', 'loadout.constraints', 'loadout.apply', 'loadout.mode', 'loadout.cancel'))
 PREFERENCE_CALLBACKS = frozenset(('save-setup-preferences',))
 SETUP_CALLBACKS = LAUNCHER_CALLBACKS | INSTALL_CALLBACKS | UPDATE_CALLBACKS | LOADOUT_CALLBACKS | PREFERENCE_CALLBACKS
 COMMANDS = frozenset((*[name for name in APP_CALLBACKS if name != '_save_console_preferences'],
@@ -274,7 +274,6 @@ class GkmsAdapter:
             recommendations = []
         bundles = getattr(app, '_console_bundle_views', {})
         selected_bundle_id = str(self.var('console_bundle_var', '') or '')
-        selected_bundle = bundles.get(selected_bundle_id)
         source_label = ('自動培育既有觀測' if has_live_state else
                         '已保存場次 · 非即時' if state else '尚無遊戲狀態')
         if retained:
@@ -314,21 +313,42 @@ class GkmsAdapter:
         if native_observation and (phase in BUSY_PHASES or retained):
             startup_notes = [item for item in blockers if item == _DLL_STARTUP_NOTICE]
             blockers = [item for item in blockers if item != _DLL_STARTUP_NOTICE]
-        from ..gui_exam_models import get_gui_exam_policy_variants, current_policy_selection_state
+        from ..gui_exam_models import (get_gui_exam_policy_variants, current_policy_selection_state,
+                                       POLICY_VARIANT_LABELS)
         policy_variants = list(get_gui_exam_policy_variants())
         from ..local_flow_trial import flow_coverage
         selected_flow_coverage = flow_coverage(
             getattr(selected, 'plan_type', None), getattr(selected, 'exam_effect_type', None),
-            self.var('console_mode_var', 'produce-004'))
+            self.var('console_mode_var', 'produce-004'), variant_id=self.var('exam_policy_variant_var', 'rl_shared_iql'))
         for variant in policy_variants:
             variant['inference_scope'] = {'modes': list(MODES), 'flow_count': 6,
-                                          'trained_flow_count': 1, 'automatic_fallback': False}
-        variant_id = self.var('exam_policy_variant_var', 'baseline')
+                                          'trained_flow_count': 6 if variant['id'] == 'rl_shared_iql' else 1, 'automatic_fallback': False}
+        variant_id = self.var('exam_policy_variant_var', 'rl_shared_iql')
         pending_native = self.has_pending_native_transaction()
         policy_selection = current_policy_selection_state(variant_id, running=self.is_busy(),
             pending_transaction=pending_native)
         selected_variant_id = policy_selection['active_variant_id'] or variant_id
         selected_policy = next((row for row in policy_variants if row['id'] == selected_variant_id), None)
+        selected_display = selected_policy or {'id': selected_variant_id,
+            'label': POLICY_VARIANT_LABELS.get(selected_variant_id, selected_variant_id),
+            'available': False, 'artifact_available': False, 'reason': '所選模型目前無法使用'}
+        selected_model_label = selected_display.get('model_label') or selected_display['label']
+        selected_model_hash = selected_display.get('model_sha256')
+        selected_evidence = deepcopy(selected_display.get('evidence_summary') or {})
+        model_status = '模型檔案已核對' if selected_display.get('artifact_available') else '模型不可用'
+        selected_model_view = {'variant_id': selected_variant_id, 'label': selected_model_label,
+            'model_sha256': selected_model_hash, 'available': selected_display.get('available') is True,
+            'artifact_available': selected_display.get('artifact_available') is True,
+            'live_ready': selected_display.get('live_ready') is True,
+            'reason': selected_display.get('reason'), 'evidence_summary': selected_evidence,
+            'display_source': 'selected-exam-policy-catalog', 'execution_observation': False}
+        model_detail = f"演出模型：{selected_model_label}\n固定版本：{selected_model_hash or '無法確認'}"
+        if selected_evidence.get('training_updates') is not None:
+            model_detail += (f"\n訓練更新：{selected_evidence['training_updates']}"
+                             f"\n獨立驗證資料：{selected_evidence.get('validation_rows', '—')} 筆")
+        if selected_display.get('reason'):
+            model_detail += '\n' + selected_display['reason']
+        model_detail += '\n此處為已選設定；實際執行模型以本場觀測與動作紀錄為準。'
         start_reason = self.model_start_blocker(selected_policy, None if selected is None else selected.id,
             self.var('console_mode_var','produce-004'))
         if pending_native:
@@ -360,6 +380,11 @@ class GkmsAdapter:
                 model_display_source = remembered['display_source']
                 model_observed_at = remembered['observed_at']
         stop_reason = retained.get('stop_reason') if retained else getattr(live, 'stop_reason_text', None)
+        from ..rl.score_prediction import for_display as score_prediction_for_display
+        score_prediction = score_prediction_for_display(monitor.get('score_prediction'),
+            actual_policy=actual_policy, run_id=(active_dict or {}).get('run_id'), state=state,
+            running=phase in BUSY_PHASES, pending=pending_native, retained=bool(retained),
+            observation_identity=monitor.get('exam_state_identity'))
         last_action = retained.get('last_action') if retained else getattr(live, 'recent_action_text', None)
         raw_logs = self.widget_text('live_log_text').splitlines()[-80:] + self.errors[-10:]
         from ..app_version import info as application_info
@@ -400,6 +425,7 @@ class GkmsAdapter:
                      'start_reason': start_reason,
                      'start_note': (selected_policy or {}).get('preflight_note'),
                      'state': state, 'cards': cards, 'drinks': drinks, 'legal_actions': legal,
+                     'score_prediction': score_prediction,
                      'state_timestamp': timestamp, 'source_label': source_label,
                      'last_action': None if home_idle else self._display_action(last_action, stop_reason),
                      'stop_reason': stop_reason,
@@ -409,19 +435,19 @@ class GkmsAdapter:
             # Existing policy labels are configured/selected metadata, not proof
             # that the running worker has loaded the same manifest.
             'policy': {'selected_flow_coverage': selected_flow_coverage,
-                       'selected_label': self.var('live_model_status_var', '尚未載入'),
+                       'selected_label': f'已選演出模型：{selected_model_label}',
                        'selection_locked': policy_selection['locked'],
                        'selection_lock_reason': policy_selection['reason'],
                        'selection_lock_kind': policy_selection['reason_kind'],
                        'selection_run_id': policy_selection['active_run_id'],
-                       'configured_owner_label': self.var('live_formal_policy_var'),
+                       'configured_owner_label': f'培育：既有培育策略｜演出：{selected_model_label}｜DLL 執行動作',
                        'actual_variant_id': actual_policy.get('variant_id'),
                        'actual_model_label': actual_policy.get('label'),
                        'actual_model_sha256': actual_policy.get('model_sha256'),
                        'actual_run_id': actual_policy.get('run_id'),
                        'actual_model_display_source': model_display_source,
                        'actual_model_observed_at': model_observed_at,
-                       'note': '顯示既有 GUI 的設定策略；當步實際動作以執行紀錄為準。',
+                       'note': '已選模型來自演出策略選項；當步實際動作以本場執行紀錄為準。',
                        'request_bundle_path': str(getattr(app._console_live_controller.request,
                                                          'plan2_policy_bundle_path', '') or '')},
             'batch': {key: getattr(batch, key, None) for key in
@@ -433,10 +459,13 @@ class GkmsAdapter:
                         'deck': self.tree_rows('run_deck_tree'),
                         'records': self.tree_rows('run_history_tree'),
                         'inventory': overview_dict.get('inventory', [])},
-            'models': {'rows': self.tree_rows('console_model_tree'),
-                       'detail': self.widget_text('console_model_detail'),
-                       'status': self.var('console_bundle_status_var'),
-                       'selected_view': plain(selected_bundle)},
+            'models': {'rows': [[selected_model_label, model_status,
+                                  '是' if selected_display.get('artifact_available') else '否',
+                                  '是' if selected_evidence.get('decision_interfaces_verified') else '—',
+                                  '—', '—', '—']],
+                       'detail': model_detail,
+                       'status': '目前選用' if selected_display.get('available') else '目前不可用',
+                       'selected_view': selected_model_view},
             'training': {'rows': self.tree_rows('training_data_tree'),
                          'note': self.widget_text('training_status_text')},
             'logs': raw_logs,
@@ -493,7 +522,7 @@ class GkmsAdapter:
             raise ValueError('此後端尚未接入該培育模式；不會退回 Pro。')
         if type(target) is not int or not 1 <= target <= 999:
             raise ValueError('場數必須為 1–999 的整數。')
-        self._validated_policy_variant(values.get('policy_variant_id', self.var('exam_policy_variant_var', 'baseline')))
+        self._validated_policy_variant(values.get('policy_variant_id', self.var('exam_policy_variant_var', 'rl_shared_iql')))
         return profiles[card]['label'], MODES[mode], target
 
     def _validated_policy_variant(self, value):
@@ -517,8 +546,8 @@ class GkmsAdapter:
             app.console_mode_choice_var.set(mode)
             app._on_console_mode_changed()
         app.home_cycle_target_var.set(str(target))
-        variant = values.get('policy_variant_id', self.var('exam_policy_variant_var', 'baseline'))
-        if variant != self.var('exam_policy_variant_var', 'baseline'):
+        variant = values.get('policy_variant_id', self.var('exam_policy_variant_var', 'rl_shared_iql'))
+        if variant != self.var('exam_policy_variant_var', 'rl_shared_iql'):
             from ..gui_exam_models import current_policy_selection_state
             selection = current_policy_selection_state(variant)
             if not selection['active_run_id']:
@@ -550,12 +579,22 @@ class GkmsAdapter:
         if self.close_requested and name not in ('show_legacy', 'shutdown') and not stop:
             raise RuntimeError('接線正在安全結束，拒絕新增工作。')
         parallel_developer = developer_reads | (developer_actions & {'offline.start', 'offline.stop'})
-        if self.is_busy() and not stop and name not in READ_CALLBACKS | parallel_developer and name not in ('show_legacy', 'shutdown'):
+        parallel_developer |= developer_actions & {'research.plan', 'research.stop'}
+        if name in ('research.start', 'research.resume') and values.get('stage_id') not in ('raw', 'all'):
+            parallel_developer |= developer_actions & {name}
+        loadout_service = getattr(self.setup_service, 'loadout', None)
+        loadout_cancel = (name == 'loadout.cancel' and loadout_service is not None
+                          and loadout_service.can_cancel_recommendation())
+        if self.is_busy() and not stop and not loadout_cancel and name not in READ_CALLBACKS | parallel_developer and name not in ('show_legacy', 'shutdown'):
             raise RuntimeError('執行／停止處理中或手動工作忙碌；拒絕平行操作。')
         loadout_service = getattr(self.setup_service, 'loadout', None)
         loadout_reconciliation = (name == 'loadout.read' and loadout_service is not None
                                   and loadout_service.can_reconcile_pending())
-        if self.has_pending_native_transaction() and not stop and not loadout_reconciliation and name not in READ_CALLBACKS | parallel_developer and name not in ('show_legacy','shutdown'):
+        developer = getattr(self.setup_service, 'developer', None)
+        query_resume_check = getattr(developer, 'can_resume_research_query', None)
+        query_reconciliation = (name == 'research.resume' and values.get('stage_id') in ('raw', 'all')
+            and callable(query_resume_check) and query_resume_check(values['stage_id']) is True)
+        if self.has_pending_native_transaction() and not stop and not loadout_cancel and not loadout_reconciliation and not query_reconciliation and name not in READ_CALLBACKS | parallel_developer and name not in ('show_legacy','shutdown'):
             raise RuntimeError('尚有未完成的原生交易；保留原模型及操作身份，暫停新增工作。')
         app = self.app
         if name in SETUP_CALLBACKS | developer_actions:
@@ -565,7 +604,7 @@ class GkmsAdapter:
         elif name in ('_start_console_autopilot', '_start_console_batch'):
             self._validated_settings(values)
             from ..gui_exam_models import verify_gui_exam_model_artifacts
-            variant = values.get('policy_variant_id', self.var('exam_policy_variant_var', 'baseline'))
+            variant = values.get('policy_variant_id', self.var('exam_policy_variant_var', 'rl_shared_iql'))
             selected = verify_gui_exam_model_artifacts(variant)
             blocked = self.model_start_blocker(selected,values.get('idol_card_id'),values.get('console_mode_var'),
                 target_cycles=values.get('home_cycle_target_var'))

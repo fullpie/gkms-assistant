@@ -202,17 +202,52 @@ def _pe_entrypoint(path):
 
 
 def verify_slot(slot):
-    slot = Path(slot).resolve()
-    manifest = _package_manifest(_json(checked_path(slot, PACKAGE_MANIFEST)))
-    actual = set()
+    # Validate directories once per invocation. checked_path is appropriate for
+    # an individual installer mutation, but enumerating every ancestor for each
+    # of thousands of Torch files made launch verification quadratic.
+    slot = Path(os.path.abspath(slot))
+    def stamp(path, *, directory=False):
+        value = path.lstat()
+        _require(not stat.S_ISLNK(value.st_mode) and not getattr(value, 'st_file_attributes', 0) & 0x400,
+            "UNSAFE_GUI_SLOT_LINK")
+        _require(stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode),
+            "GUI_INSTALLED_FILE_TYPE_CHANGED")
+        return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns,
+            getattr(value, 'st_file_attributes', 0))
+    ancestors = {path: stamp(path, directory=True) for path in (slot, *slot.parents)}
+    manifest_path = slot / PACKAGE_MANIFEST
+    manifest_before = stamp(manifest_path)
+    manifest = _package_manifest(_json(manifest_path))
+    _require(stamp(manifest_path) == manifest_before, "GUI_INSTALLED_FILE_CHANGED")
+    actual, directories, observed_files = set(), {slot: ancestors[slot]}, {}
     for directory, children, filenames in os.walk(slot, followlinks=False):
-        _require(not any(is_link(Path(directory) / name) for name in children), "UNSAFE_GUI_SLOT_LINK")
-        actual.update((Path(directory) / name).relative_to(slot).as_posix() for name in filenames)
+        parent = Path(directory)
+        _require(stamp(parent, directory=True) == directories[parent], "GUI_INSTALLED_INVENTORY_CHANGED")
+        names = children + filenames
+        _require(len({name.casefold() for name in names}) == len(names), "GUI_INSTALLED_CASE_COLLISION")
+        for name in children:
+            child = parent / name
+            directories[child] = stamp(child, directory=True)
+        for name in filenames:
+            path = parent / name
+            relative = path.relative_to(slot).as_posix()
+            _require(relative_name(relative) == relative, "UNSAFE_GUI_FILE_INVENTORY")
+            actual.add(relative)
+            observed_files[relative] = stamp(path)
     _require(actual == set(manifest['files']) | {PACKAGE_MANIFEST}, "GUI_INSTALLED_INVENTORY_CHANGED")
     for name, digest in manifest['files'].items():
-        path = checked_path(slot, name)
-        _require(path.is_file() and _hash(path) == digest, "GUI_INSTALLED_FILE_CHANGED")
-    _pe_entrypoint(checked_path(slot, ENTRYPOINT))
+        path = slot / name
+        before = stamp(path)
+        _require(before == observed_files[name] and _hash(path) == digest and stamp(path) == before,
+            "GUI_INSTALLED_FILE_CHANGED")
+    _pe_entrypoint(slot / ENTRYPOINT)
+    _require(stamp(manifest_path) == manifest_before
+        and all(stamp(path, directory=True) == before for path, before in directories.items()),
+        "GUI_INSTALLED_INVENTORY_CHANGED")
+    # Ancestors outside the slot may acquire unrelated siblings, but may not be
+    # replaced or become reparse points during this verification.
+    _require(all(stamp(path, directory=True)[:2] == before[:2] for path, before in ancestors.items()),
+        "UNSAFE_GUI_SLOT_LINK")
     return manifest
 
 

@@ -1,4 +1,26 @@
-# GUI 0.1 public package
+# GUI 0.2 public package
+
+The 0.2 public model package is `gkms.portable-model-assets.v2`: one fixed shared
+RL actor, the existing portable Master/feature material, and compact release
+qualification identities. It contains final inference tensors only. The
+checkpoint, optimizer, qualified RAW samples, private scenario search and
+developer tools remain outside the release. Both BC models remain archived and
+are disabled in the live selector/factory. An existing BC run or pending action
+is preserved and blocked from implicit migration; only an idle next-run
+preference becomes RL.
+
+CPU PyTorch 2.10.0 is required in the build environment and bundled in the GUI
+executable directory. The small bootstrap continues to exclude Torch. Install
+the CPU wheel from `https://download.pytorch.org/whl/cpu`; the builder rejects a
+CUDA build. Actual original tensor equality, relocated input/action parity,
+compiled self-check, normal public helper/DLL operation and publication are
+separate evidence stages.
+
+When reusing an unchanged control ZIP, pass the previous matching public native
+source with `--native-source-directory DIR --native-source-manifest-sha256 SHA`.
+Every source file and the original ledger are verified, and the source's control
+archive SHA must equal the selected control ZIP. This avoids exporting later
+private-only source branches as if they were the already published native build.
 
 The public package uses the existing GUI/controller owner with `public_build=True`.
 It does not contain the developer addon, raw account/replay data, historical
@@ -40,8 +62,8 @@ Build the Windows onedir GUI and bootstrap using PyInstaller 6.22.3:
 The model package is release-pinned. Loadout and outer rule data are independently
 pinned to the same current Master source; historical behavior provenance remains
 separate. The build copies only manifest-listed assets, checks the
-original numerical source bytes, preserves tensor identities, and loads both
-actual policy factories in the compiled executable. It does not train, select,
+original numerical source bytes, preserves tensor identities, and loads the
+actual RL policy factory in the compiled executable. It does not train, select,
 activate, or execute a policy. Missing prerequisites appear as machine-readable
 blockers in `build-report.json`.
 

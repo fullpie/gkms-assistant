@@ -227,6 +227,14 @@
       'next-selection-idle':'nextRunNote','retained-run':'retainedRunNote'};
     const selectionNote=noteKeys[sel.note_kind]?t(noteKeys[sel.note_kind]):v.in_progress===true?t('awaitingRunIdentity'):(sel.note||'');
     const activeRun=s?.active_run;
+    const prediction=live.score_prediction;
+    const predictionReady=connected&&P.running(s)&&!live.pending_transaction&&prediction?.available===true&&
+      prediction.run_id===activeRun?.run_id&&prediction.model_sha256===s?.policy?.actual_model_sha256&&Number.isFinite(prediction.score);
+    const predictionHeld=connected&&P.running(s)&&prediction?.available===false&&prediction?.last_confirmed===true&&
+      prediction.run_id===activeRun?.run_id&&prediction.model_sha256===s?.policy?.actual_model_sha256&&Number.isFinite(prediction.last_confirmed_score);
+    const predictionText=predictionReady?`${prediction.estimated===false?'':'≈ '}${num(Math.round(prediction.score))}`:
+      predictionHeld?`≈ ${num(Math.round(prediction.last_confirmed_score))} · ${t('predictionUpdating')}`:'—';
+    const predictionNote=t(predictionHeld?'predictedScorePendingNote':predictionReady&&prediction.estimated===false?'terminalScoreNote':'predictedScoreNote');
     const activeMode=(catalog.modes||[]).find(row=>row.id===activeRun?.produce_id)?.label||activeRun?.produce_id;
     const activeRunText=activeRun?[activeRun.idol_name||activeRun.idol_card_id,activeMode].filter(Boolean).join(' · '):v.in_progress===true?t('awaitingRunIdentity'):t('noActiveRun');
     const coverage=s?.policy?.selected_flow_coverage;
@@ -234,19 +242,20 @@
     return `<header class="view-heading cultivate-heading"><h1>${txt('cultivate')}</h1><p>${txt(state.demo?'demoBadge':connected?(s?.bridge?.control_enabled===false?'projectReadOnly':'projectConnected'):'projectUnavailable')}</p></header>${launcherCard()}${batchProgress()}<div class="run-grid"><section class="card cultivation-settings" id="cultivationSettings" aria-labelledby="cultivationTitle"><div class="card-heading"><span class="module-icon">${icon('star')}</span><h2 id="cultivationTitle">${txt('gameReady')}</h2></div><div class="grid-fields">
     <label class="field"><span>${txt('idol')}</span><select data-field="projectIdol" ${!connected||busy?'disabled':''}>${option('',t('idolPlaceholder'),sel.idol_card_id)}${(catalog.profiles||[]).map(p=>option(p.id,p.label,sel.idol_card_id)).join('')}</select></label>
     <label class="field"><span>${txt('mode')}</span><select data-field="projectMode" ${!connected||busy?'disabled':''}>${(catalog.modes||[]).length?(catalog.modes||[]).map(m=>option(m.id,m.label,sel.mode_id)).join(''):'<option>—</option>'}</select></label>
-    <label class="field"><span>${txt('model')}</span><select data-field="policyVariant" ${!connected||busy||modelLocked?'disabled':''}>${P.variantIds.map(id=>`<option value="${id}" ${id===(sel.policy_variant_id||state.policyVariant)?'selected':''} ${P.availableVariant(s,id)?'':'disabled'}>${txt(id==='baseline'?'modelBaseline':'modelIntegrated')}${P.availableVariant(s,id)?'':` · ${txt('modelUnavailable')}`}</option>`).join('')}</select></label>
+    <label class="field"><span>${txt('model')}</span><select data-field="policyVariant" ${!connected||busy||modelLocked?'disabled':''}>${modelLocked&&['baseline','integrated'].includes(sel.policy_variant_id)?`<option value="${sel.policy_variant_id}" selected disabled>${txt(sel.policy_variant_id==='baseline'?'modelBaseline':'modelIntegrated')} · ${txt('modelUnavailable')}</option>`:''}${P.selectableVariantIds(s).map(id=>`<option value="${id}" ${id===(sel.policy_variant_id||state.policyVariant)?'selected':''} ${P.availableVariant(s,id)?'':'disabled'}>${id==='rl_shared_iql'?escape(s?.catalog?.policy_variants?.find(row=>row.id===id)?.label||'共用離線 RL'):txt(id==='baseline'?'modelBaseline':'modelIntegrated')}${P.availableVariant(s,id)?'':` · ${txt('modelUnavailable')}`}</option>`).join('')}</select></label>
     <label class="field"><span>${txt('count')}</span><input data-field="runCount" type="number" min="1" max="999" step="1" value="${sel.target_cycles||state.runCount}" ${!connected||busy?'disabled':''}></label></div>
     ${selectionNote?`<p class="help selection-note">${escape(selectionNote)}</p>`:''}${modelLockNote?`<p class="help model-lock">${txt(modelLockNote)}</p>`:''}${coverageKey?`<p class="help flow-coverage">${txt(coverageKey)}${coverage.quality_accepted===false?' '+txt('flowQualityUnverified'):''}</p>`:''}${!start&&!P.running(s)&&!state.demo?notice('startBlock','shield'):''}${live.start_reason?`<p class="help">${escape(live.start_reason)}</p>`:''}${variants.find(x=>x.id===sel.policy_variant_id)?.reason?`<p class="help">${escape(variants.find(x=>x.id===sel.policy_variant_id).reason)}</p>`:''}${state.controlUnknown?notice('projectUnconfirmed'):''}
     <div class="button-row">${btn('start','start','primary','play',!start)}${btn(state.stopPending||live.phase==='cancelling'?'stopping':'stop','stop','','stop',!stop)}</div><div class="cultivation-setup-link">${btn('fixSetup','go-setup','ghost','setup')}</div></section>
     <section class="card cultivation-status"><div class="card-heading"><div class="module-icon">${icon('pulse')}</div><div><h2>${txt('runStatus')}</h2><p class="help">${escape(phaseLabel())}</p></div></div>
     <div class="metrics">${metrics.map(([k,val])=>`<div class="metric"><span>${txt(k)}</span><strong>${num(val)}</strong></div>`).join('')}</div>
-    <dl class="status-rows">${statusRow('currentCultivation',escape(activeRunText||t('awaitingRunIdentity')))}${statusRow('actualModel',escape(s?.policy?.actual_model_label||t('modelNotObserved')))}${statusRow('lastAction',escape(live.last_action||'—'))}${statusRow('stopReason',escape(live.stop_reason||'—'))}</dl>${live.display_source==='retained-terminal-view'?`<p class="help">${txt('retainedObservation')}</p>`:''}${s?.policy?.actual_model_sha256?`<details class="model-evidence"><summary>${txt('modelIdentity')}</summary><code>${escape(s.policy.actual_model_sha256)}</code><p>${escape(s.policy.actual_run_id||'—')}</p></details>`:''}
+    <dl class="status-rows">${statusRow('currentCultivation',escape(activeRunText||t('awaitingRunIdentity')))}${statusRow('actualModel',escape(s?.policy?.actual_model_label||t('modelNotObserved')))}${statusRow('predictedScore',`<span data-score-prediction title="${escape(predictionNote)}">${escape(predictionText)}</span>`)}${statusRow('lastAction',escape(live.last_action||'—'))}${statusRow('stopReason',escape(live.stop_reason||'—'))}</dl>${live.display_source==='retained-terminal-view'?`<p class="help">${txt('retainedObservation')}</p>`:''}${s?.policy?.actual_model_sha256?`<details class="model-evidence"><summary>${txt('modelIdentity')}</summary><code>${escape(s.policy.actual_model_sha256)}</code><p>${escape(s.policy.actual_run_id||'—')}</p></details>`:''}
     </section></div>`+(state.demo?'':loadoutCard())+demoPanel('cultivate');
   }
   function loadoutCan(action) {
     const s=projectData(),value=s?.loadout;
     if(!host||state.demo||state.projectLost||state.exiting||state.busy||state.projectPending||state.loadoutPending||
       state.controlUnknown||state.outcomeUnknown||s?.bridge?.control_enabled!==true||value?.capabilities?.[action]!==true)return false;
+    if(action==='cancel')return value.busy===true&&value.task==='recommend'&&!value.game_busy;
     if(editingAllowed())return true;
     return action==='read'&&value.can_reconcile_pending===true&&!value.busy&&!value.game_busy&&
       !s?.live?.busy&&!s?.batch?.running&&!['running','cancelling'].includes(s?.live?.phase)&&
@@ -436,7 +445,7 @@
     return {idol_card_id:s.idol_card_id||'',profile_selection_var:p?.label||'',
       console_mode_var:s.mode_id||'',console_mode_choice_var:m?.label||'',
       home_cycle_target_var:s.target_cycles||1,batch_target_var:s.target_cycles||1,
-      policy_variant_id:s.policy_variant_id||'baseline',console_bundle_var:s.bundle_id||''};
+      policy_variant_id:s.policy_variant_id||'rl_shared_iql',console_bundle_var:s.bundle_id||''};
   }
   async function projectCommand(callback,override={}) {
     const ph=window.GKMS_PROJECT_HOST;
@@ -612,7 +621,7 @@
   }
   function advancedPage() {
     const variants=projectData()?.catalog?.policy_variants||[];
-    return `<header class="view-heading"><h1>${txt('advanced')}</h1><p>${txt('advancedNote')}</p></header>${appUpdateCard()}<div class="advanced-grid"><section class="card"><h2>${txt('modelEval')}</h2><div class="table-wrap"><table><thead><tr><th>${txt('model')}</th><th>${txt('modelState')}</th><th>${txt('stopReason')}</th></tr></thead><tbody>${P.variantIds.map(id=>{const v=variants.find(row=>row.id===id);return `<tr><td>${txt(id==='baseline'?'modelBaseline':'modelIntegrated')}</td><td>${txt(v?.available===true?'modelAvailable':'modelUnavailable')}</td><td>${escape(v?.reason||'—')}</td></tr>`;}).join('')}</tbody></table></div><p class="help">${txt('modelEvidenceNote')}</p></section></div>`+(existingProject()?'':restoreCard())+(projectData()?.developer?.available?'<div id="developerPanel"></div>':projectData()?.developer?.error?`<section class="card" role="status"><p>本機開發工具未啟用：${escape(projectData().developer.error)}</p></section>`:'');
+    return `<header class="view-heading"><h1>${txt('advanced')}</h1><p>${txt('advancedNote')}</p></header>${appUpdateCard()}<div class="advanced-grid"><section class="card"><h2>${txt('modelEval')}</h2><div class="table-wrap"><table><thead><tr><th>${txt('model')}</th><th>${txt('modelState')}</th><th>${txt('stopReason')}</th></tr></thead><tbody>${P.selectableVariantIds(projectData()).map(id=>{const v=variants.find(row=>row.id===id);return `<tr><td>${id==='rl_shared_iql'?escape(v?.label||'共用離線 RL'):txt(id==='baseline'?'modelBaseline':'modelIntegrated')}</td><td>${txt(v?.available===true?'modelAvailable':'modelUnavailable')}</td><td>${escape(v?.reason||'—')}</td></tr>`;}).join('')}</tbody></table></div><p class="help">${txt('modelEvidenceNote')}</p></section></div>`+(existingProject()?'':restoreCard())+(projectData()?.developer?.available?'<div id="developerPanel"></div>':projectData()?.developer?.error?`<section class="card" role="status"><p>本機開發工具未啟用：${escape(projectData().developer.error)}</p></section>`:'');
   }
   function mountDeveloperPanel() {
     const container=$('developerPanel');if(!container||!projectData()?.developer?.available)return;
@@ -1009,7 +1018,7 @@
       case 'app-update-check':case 'app-update-download':appUpdateAction(action);break;
       case 'app-update-apply':case 'app-update-rollback':appUpdateReview(action);break;
       case 'commit-app-update':if(state.dialog?.type==='app-update')appUpdateAction(state.dialog.action,state.dialog);break;
-      case 'loadout-refresh':case 'loadout-read':case 'loadout-recommend':case 'loadout-constraints':loadoutAction(action.slice(8));break;
+      case 'loadout-refresh':case 'loadout-read':case 'loadout-recommend':case 'loadout-constraints':case 'loadout-cancel':loadoutAction(action.slice(8));break;
       case 'loadout-clear-memory-exclusions':if(loadoutCan('constraints')){loadoutView.clearMemoryExclusions(projectData()?.loadout);loadoutAction('constraints');}break;
       case 'loadout-review':loadoutReview();break;
       case 'loadout-commit':if(state.dialog?.type==='loadout')loadoutAction('apply',state.dialog.payload);break;
@@ -1051,6 +1060,7 @@
     if(f==='approveTakeover'&&state.dialog?.preview){state.dialog.approveTakeover=e.target.checked===true;renderDialog();return;}
     if(f==='recoveryDirection'&&state.dialog?.type==='recover'&&['rollback','forward'].includes(e.target.value)){state.dialog.direction=e.target.value;state.dialog.preview=null;state.dialog.approveTakeover=false;renderDialog();return;}
     if(locked())return;
+    if(f==='loadoutMode'){loadoutAction('mode',{mode:e.target.value});return;}
     if(f.startsWith('loadout')){if(loadoutCan(f==='loadoutProposal'?'apply':'constraints')&&loadoutView.change(f,e.target.value,projectData()?.loadout))render();return;}
     if(state.dialog?.type==='launcher'&&['closeDmm','forceCloseDmm'].includes(f)){state.dialog[f]=e.target.checked;if(!state.dialog.closeDmm)state.dialog.forceCloseDmm=false;renderLauncherDialog();return;}
     if(window.GKMS_PROJECT_HOST && ['projectIdol','projectMode','policyVariant','runCount'].includes(f)){projectSelection(f,e.target.value);return;}

@@ -20,6 +20,7 @@ SCHEMA = 'gkms.model-runtime-loader-compatibility.v1'
 _SEAL = object()
 _CHANGED = {'native_structure_features.py', 'native_policy_features.py', 'integrated_exam_bc_features.py'}
 _INFERENCE_FACTORY_AST_SHA256 = '74102e6a055905b14865fdfa6b623803d4726205d51153315d3acdc4d0df1e2e'
+_OWNED_EXECUTION_MASTER_AST_SHA256 = '743d1ecefc36a6ce01434f5683749ef4b3c8926044bef3ea238a06ebadd2e8cf'
 
 
 def _ast(value):
@@ -110,6 +111,29 @@ def _normalize_loader_source(name, raw):
         load.body = [_statement('stat = Path(proof["source_metadata"]["path"]).stat()') if _equal(node, stat) else node
             for node in load.body if not _equal(node, physical)]
     elif name == 'native_policy_features.py':
+        additions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+            and node.name == '_owned_execution_master']
+        if additions:
+            if len(additions) != 1 or hashlib.sha256(_ast(additions[0]).encode()).hexdigest() != _OWNED_EXECUTION_MASTER_AST_SHA256:
+                raise ValueError('Owned execution Master binding differs from its reviewed provenance checks')
+            tree.body.remove(additions[0])
+            owners = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'OwnedNativePolicySource']
+            initializers = [node for owner in owners for node in owner.body
+                if isinstance(node, ast.FunctionDef) and node.name == '__init__']
+            if len(owners) != 1 or len(initializers) != 1:
+                raise ValueError('Exact owned policy source initializer required')
+            initializer = initializers[0]
+            binding = _statement('self.source_master, self.master, self.execution_master_reference, self.execution_master_policy = _owned_execution_master(inputs, source, initialization)')
+            if sum(_equal(node, binding) for node in initializer.body) != 1:
+                raise ValueError('Owned execution Master must use the exact verified source binding')
+            initializer.body = [_statement("self.master = source['expected']['master_hash']")
+                if _equal(node, binding) else node for node in initializer.body]
+            watched = _statement("for reference in (identity['inputs_reference'], identity['source_reference'], inputs['reconstruction_manifest'], identity['initialization_reference'], self.execution_master_reference): pass")
+            loops = [node for node in initializer.body if isinstance(node, ast.For)
+                and _equal(node.target, watched.target) and _equal(node.iter, watched.iter)]
+            if len(loops) != 1:
+                raise ValueError('Actual initialization and execution Master must remain watched')
+            loops[0].iter = _statement("for reference in (identity['inputs_reference'], identity['source_reference'], inputs['reconstruction_manifest']): pass").iter
         verify = function('verify_primary_kernel_bridge')
         guard = _statement('''if loader_compatibility is not None:
     from .runtime_loader_compatibility import RuntimeLoaderCompatibility

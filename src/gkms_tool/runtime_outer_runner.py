@@ -851,6 +851,8 @@ def run_runtime_cultivation(
     loadout_inventory = None
     loadout_proposal = None
     loadout_constraints = None
+    loadout_mode = None
+    loadout_descriptor = None
     snapshot = None
     deadline_without_progress = time.monotonic() + 45.0
     last_revision = None
@@ -908,7 +910,7 @@ def run_runtime_cultivation(
     from .runtime_outer_policy import AUDITION_STRATEGIES, RANKING_PRODUCE_IDS
     if produce_id not in RANKING_PRODUCE_IDS:
         return finish(STATUS_HARD_STOP, f"native-mode-rules-not-implemented:{produce_id}", 0)
-    if exam_policy_variant not in (None,'baseline','integrated'):
+    if exam_policy_variant not in (None,'baseline','integrated','rl_shared_iql'):
         return finish(STATUS_HARD_STOP, 'Unknown explicit exam policy variant', 0)
     if audition_strategy not in AUDITION_STRATEGIES:
         return finish(STATUS_HARD_STOP, f"native-audition-strategy-not-implemented:{audition_strategy}", 0)
@@ -1135,10 +1137,51 @@ def run_runtime_cultivation(
                     loadout_inventory = AccountInventorySnapshot.from_dict(result.raw["inventory"])
                     save_account_inventory(client.root.parent / "account_inventory/current.json", loadout_inventory)
                     loadout_constraints = load_loadout_constraints(DEFAULT_CONSTRAINTS_PATH, account_scope=loadout_inventory.account_scope) if DEFAULT_CONSTRAINTS_PATH.is_file() else LoadoutConstraints()
-                    if loadout_constraints.excluded_memory_ids:
+                    from .private_loadout_mode import load_recommendation_mode, private_rl_descriptor
+                    loadout_mode = load_recommendation_mode()
+                    if loadout_mode == "shared_offline_rl":
+                        # Freeze the qualified model artifact before any loadout
+                        # changes; do not resolve another checkpoint mid-prepare.
+                        loadout_descriptor = private_rl_descriptor(refresh=True)
+                    if loadout_constraints.excluded_memory_ids and loadout_mode != "shared_offline_rl":
                         raise RuntimeCommandError("native-memory-exclusions-not-supported: 已保存回憶排除設定；本版遊戲自動編成無對應限制，請先在選卡偏好明確解除回憶排除。設定未刪除，未消耗 AP。")
                 if section == "memory":
                     from .runtime_memory_autoselect import memory_auto_record, native_memory_ids, overlay_explicit_memory_locks
+                    if loadout_mode == "shared_offline_rl" and loadout_proposal is None:
+                        # A resumed memory page must retain the supports already
+                        # chosen by the game, not rank a different support deck.
+                        from dataclasses import replace
+                        from .private_loadout_mode import recommend_with_mode
+                        available = read_available_loadout(client)
+                        owned = tuple(row["card_id"] for row in available.get("support_cards", ())
+                                      if isinstance(row, Mapping) and row.get("is_rental") is False)
+                        borrowed = [row.get("rental_key") for row in available.get("support_cards", ())
+                                    if isinstance(row, Mapping) and row.get("is_rental") is True]
+                        if len(owned) != 5 or len(borrowed) != 1 or not borrowed[0]:
+                            raise RuntimeCommandError("RL loadout resume requires complete current supports and rental")
+                        if not set(loadout_constraints.locked_support_ids) <= set(owned):
+                            raise RuntimeCommandError("Current support deck does not retain explicit locked supports")
+                        scope_constraints = replace(loadout_constraints, locked_support_ids=owned,
+                                                    locked_rental_key=borrowed[0])
+                        from .private_loadout_mode import load_prepared_recommendation
+                        selected = load_prepared_recommendation(loadout_inventory, available,
+                            constraints=loadout_constraints, idol_card_id=idol_card_id, produce_id=produce_id,
+                            model_sha256=loadout_descriptor["model_sha256"])
+                        if selected is not None and (set(selected.selection.support_card_ids) != set(owned)
+                                or selected.selection.borrowed_support.rental_key != borrowed[0]):
+                            raise RuntimeCommandError("Selected RL proposal does not match the already applied supports")
+                        proposals = (selected,) if selected is not None else recommend_with_mode(
+                            loadout_inventory, available, mode=loadout_mode,
+                            constraints=scope_constraints, idol_card_id=idol_card_id, produce_id=produce_id,
+                            descriptor=loadout_descriptor, limit=1)
+                        if not proposals:
+                            raise RuntimeCommandError("RL loadout has no legal memory proposal for current supports")
+                        loadout_proposal = proposals[0]
+                        if selected is None:
+                            from .private_loadout_mode import save_prepared_recommendation, rental_parameters
+                            save_prepared_recommendation(loadout_proposal,
+                                model_sha256=loadout_descriptor["model_sha256"], constraints=loadout_constraints,
+                                rental_parameters=rental_parameters(available, loadout_proposal.selection))
                     automatic = memory_auto_record(snapshot.raw)
                     if automatic and automatic.get("owner_bound") is True and automatic.get("phase") == "failed":
                         raise RuntimeCommandError("native memory auto-selection failed: " + str(automatic.get("failure", "unknown")))
@@ -1157,22 +1200,45 @@ def run_runtime_cultivation(
                             gateway.sleep(.25)
                             continue
                         chosen = native_memory_ids(available)
+                        if loadout_mode == "shared_offline_rl":
+                            from .private_loadout_mode import load_prepared_recommendation
+                            renewed = load_prepared_recommendation(loadout_inventory, available,
+                                constraints=loadout_constraints, idol_card_id=idol_card_id, produce_id=produce_id,
+                                model_sha256=loadout_descriptor["model_sha256"])
+                            if renewed is None:
+                                raise RuntimeCommandError("Selected RL preparation intent is missing; recompute before applying memories")
+                            loadout_proposal = renewed
+                            from .private_loadout_mode import verify_native_support_selection
+                            support_readback = verify_native_support_selection(renewed.selection, available)
+                            if "support" not in prepared_sections:
+                                prepared_sections.add("support")
+                                steps.append(InitialRegularAutopilotStep(cycle, "loadout", "native-supports-resume-ready",
+                                    idol_card_id, support_readback))
                         eligible = {row.memory_id for row in loadout_inventory.memories
                             if row.plan_type in (plan_type, "ProducePlanType_Common")}
                         wanted, overrides = overlay_explicit_memory_locks(chosen,
-                            locked_ids=loadout_constraints.locked_memory_ids,
+                            locked_ids=(loadout_proposal.selection.memory_ids if loadout_mode == "shared_offline_rl"
+                                        else loadout_constraints.locked_memory_ids),
                             excluded_ids=loadout_constraints.excluded_memory_ids, eligible_owned_ids=eligible)
                         if overrides:
                             applied = apply_native_memory_locks(loadout_inventory, available, overrides, client)
                             if (applied.status != "submitted" or applied.raw.get("applied") is not True
                                     or native_memory_ids(applied.raw.get("loadout") or {}) != wanted):
                                 raise RuntimeCommandError("explicit memory locks are not confirmed by native readback")
+                        if loadout_mode == "shared_offline_rl":
+                            from .private_loadout_mode import clear_prepared_recommendation
+                            clear_prepared_recommendation(reason="memory-selection-confirmed")
                         prepared_sections.add("memory")
                         prepared_loadout = {"support", "memory"} <= prepared_sections
                         steps.append(InitialRegularAutopilotStep(cycle, "loadout", "native-memory-auto-ready", idol_card_id,
-                            {"source": "game-native-memory-auto-selection", "operation_serial": current["operation_serial"],
-                             "memory_ids": list(wanted), "explicit_lock_overrides": list(overrides),
-                             "memory_model_used": False, "memory_heuristic_used": False}))
+                            {"source": ("shared-offline-iql-loadout" if loadout_mode == "shared_offline_rl" else "game-native-memory-auto-selection"),
+                             "operation_serial": current["operation_serial"], "memory_ids": list(wanted),
+                             "slot_overrides": list(overrides),
+                             "explicit_lock_overrides": list(overrides) if loadout_mode != "shared_offline_rl" else [],
+                             "user_locked_memory_ids": list(loadout_constraints.locked_memory_ids),
+                             "rl_selected_memory_ids": list(loadout_proposal.selection.memory_ids) if loadout_mode == "shared_offline_rl" else [],
+                             "model_sha256": None if loadout_descriptor is None else loadout_descriptor["model_sha256"],
+                             "memory_model_used": loadout_mode == "shared_offline_rl", "memory_heuristic_used": False}))
                         continue
                     choices = [a for a in snapshot.actions if a["action_id"] == "loadout.memory_auto"]
                     if len(choices) > 1:
@@ -1196,12 +1262,28 @@ def run_runtime_cultivation(
                     continue
                 if loadout_proposal is None:
                     available = read_available_loadout(client)
-                    proposals = recommend_initial_supports(loadout_inventory, available, constraints=loadout_constraints,
-                                                          idol_card_id=idol_card_id, produce_id=produce_id, limit=1)
+                    if loadout_mode == "shared_offline_rl":
+                        from .private_loadout_mode import recommend_with_mode, load_prepared_recommendation
+                        selected = load_prepared_recommendation(loadout_inventory, available,
+                            constraints=loadout_constraints, idol_card_id=idol_card_id, produce_id=produce_id,
+                            model_sha256=loadout_descriptor["model_sha256"])
+                        proposals = (selected,) if selected is not None else recommend_with_mode(
+                            loadout_inventory, available, mode=loadout_mode,
+                            constraints=loadout_constraints, idol_card_id=idol_card_id, produce_id=produce_id,
+                            descriptor=loadout_descriptor, limit=1)
+                    else:
+                        proposals = recommend_initial_supports(loadout_inventory, available, constraints=loadout_constraints,
+                                                              idol_card_id=idol_card_id, produce_id=produce_id, limit=1)
                     if not proposals:
                         raise RuntimeCommandError("no available loadout satisfies locked cards")
                     loadout_proposal = proposals[0]
-                applied = apply_account_loadout(loadout_inventory, loadout_proposal.selection, client, section="support")
+                if loadout_mode == "shared_offline_rl":
+                    from .private_loadout_mode import apply_rl_support_selection
+                    applied, loadout_proposal = apply_rl_support_selection(loadout_inventory, loadout_proposal,
+                        constraints=loadout_constraints, model_sha256=loadout_descriptor["model_sha256"],
+                        expected_loadout=available, client=client)
+                else:
+                    applied = apply_account_loadout(loadout_inventory, loadout_proposal.selection, client, section="support")
                 if applied.status != "submitted" or applied.raw.get("applied") is not True:
                     raise RuntimeCommandError("native loadout apply is not confirmed")
                 applied_sections = applied.raw.get("applied_sections", [section])
@@ -1212,6 +1294,8 @@ def run_runtime_cultivation(
                 steps.append(InitialRegularAutopilotStep(cycle, "loadout", "dll-loadout", idol_card_id,
                                                         {"applied": True, "sections": list(applied_sections),
                                                          "full_loadout_applied": prepared_loadout,
+                                                         "recommendation_mode": loadout_mode,
+                                                         "model_sha256": None if loadout_descriptor is None else loadout_descriptor["model_sha256"],
                                                          "reasons": list(loadout_proposal.reasons)}))
                 continue
             if not snapshot.actions and not (snapshot.raw["surface"] == "audition_retry" and snapshot.raw["actions_complete"]):

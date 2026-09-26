@@ -1,4 +1,4 @@
-"""Versioned GUI choices for the two completed exam policies.
+"""Qualified shared-RL GUI choice and preserved offline BC artifact readers.
 
 Artifact availability is separate from live backend admission. This module
 never changes a registry, loads a game, owns input or fabricates worker status.
@@ -16,7 +16,10 @@ from .application_paths import app_root
 
 ROOT = app_root()
 POLICY_VARIANT_IDS = ("baseline", "integrated")
-POLICY_VARIANT_LABELS = {"baseline": "主 BC＋附屬策略", "integrated": "整合版 BC"}
+PRIVATE_RL_VARIANT_ID = "rl_shared_iql"
+SELECTABLE_POLICY_VARIANT_IDS = (PRIVATE_RL_VARIANT_ID,)
+POLICY_VARIANT_LABELS = {"baseline": "主 BC＋附屬策略", "integrated": "整合版 BC",
+                         PRIVATE_RL_VARIANT_ID: "共用離線 RL（第4階段）"}
 CATALOG_RELATIVE = Path("var/research/pc_core_20260914/gui_exam_models_v1/manifest.json")
 CATALOG_SHA256 = "fa1ffc67255e42b9a46b17a6e7b05e9a8e51020887be1a2dcadaa070c4dc9058"
 MODEL_SHA256 = {
@@ -125,7 +128,7 @@ def _verified_variant(variant, reference, manifest, checks):
     return result
 
 
-def get_gui_exam_policy_variants(*, project_root=ROOT, refresh=False):
+def _get_bc_policy_variants(*, project_root=ROOT, refresh=False):
     """Return two selectable artifacts; normal snapshots only stat cached files.
 
     ``available`` refers to the model artifact, never to live/start admission.
@@ -137,8 +140,16 @@ def get_gui_exam_policy_variants(*, project_root=ROOT, refresh=False):
     # A configured public package is a distinct, pinned inference artifact.
     # Missing/corrupt public files never fall back to private research assets.
     from .portable_model_assets import configured_portable_assets
+    from .application_paths import public_installation
+    private_io_equivalence = False
+    if not public_installation(project_root):
+        from .private_runtime_sources import private_runtime_io_reference
+        try:
+            private_io_equivalence = private_runtime_io_reference(project_root=project_root, refresh=refresh) is not None
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            return tuple(_placeholder(variant, "私人 BC 來源證明不可用", str(error)) for variant in POLICY_VARIANT_IDS)
     try:
-        portable = configured_portable_assets(project_root=project_root)
+        portable = None if private_io_equivalence else configured_portable_assets(project_root=project_root)
         if portable is not None:
             return tuple(portable.descriptor(variant) for variant in POLICY_VARIANT_IDS)
     except (OSError, ValueError, KeyError, TypeError) as error:
@@ -174,10 +185,37 @@ def get_gui_exam_policy_variants(*, project_root=ROOT, refresh=False):
         return deepcopy(result)
 
 
+def get_gui_exam_policy_variants(*, project_root=ROOT, refresh=False):
+    """Only the qualified shared RL actor is selectable; BC assets stay archived."""
+    from .portable_actor_assets import load_configured_actor_descriptor
+    try:
+        descriptor = load_configured_actor_descriptor(project_root=project_root, refresh=refresh)
+        if descriptor is None:
+            raise ValueError("固定 RL 模型尚未安裝或啟用")
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        return ({"id": PRIVATE_RL_VARIANT_ID, "label": POLICY_VARIANT_LABELS[PRIVATE_RL_VARIANT_ID],
+            "available": False, "artifact_available": False, "reason": "RL 模型或驗收資料不可用",
+            "diagnostic": str(error), "live_ready": False, "can_request_preflight": False,
+            "research_fallback": False, "fixed_weights": True},)
+    return (deepcopy(descriptor),)
+
+
 def get_gui_exam_policy(variant_id, *, project_root=ROOT, refresh=False):
+    if variant_id not in SELECTABLE_POLICY_VARIANT_IDS:
+        raise ValueError("BC 演出模型已停用；請選用共用 RL。舊模型與歷史場次仍保留。")
+    rows = get_gui_exam_policy_variants(project_root=project_root, refresh=refresh)
+    matches = [row for row in rows if row["id"] == variant_id]
+    if not matches:
+        raise ValueError("RL 模型尚未啟用。")
+    return matches[0]
+
+
+def get_archived_exam_policy(variant_id, *, project_root=ROOT, refresh=False):
+    """Read historical BC assets for offline comparison, never the live picker."""
     if variant_id not in POLICY_VARIANT_IDS:
-        raise ValueError("策略必須為 baseline 或 integrated")
-    return next(row for row in get_gui_exam_policy_variants(project_root=project_root, refresh=refresh) if row["id"] == variant_id)
+        raise ValueError("Only the preserved BC variants belong to the archive")
+    return next(row for row in _get_bc_policy_variants(project_root=project_root, refresh=refresh)
+                if row['id'] == variant_id)
 
 
 def verify_gui_exam_model_artifacts(variant_id, *, project_root=ROOT):
@@ -187,8 +225,11 @@ def verify_gui_exam_model_artifacts(variant_id, *, project_root=ROOT):
 
 def policy_selection_state(variant_id, *, running=False, pending_transaction=False, existing_run_id=None):
     """Selection applies to the next run and never becomes actual-worker state."""
-    if variant_id not in POLICY_VARIANT_IDS:
-        raise ValueError("策略必須為 baseline 或 integrated")
+    if variant_id not in SELECTABLE_POLICY_VARIANT_IDS:
+        # Legacy active-run records remain readable and locked; new selection
+        # and live construction reject these variants independently.
+        if variant_id not in POLICY_VARIANT_IDS or not (running or pending_transaction or existing_run_id):
+            raise ValueError("BC 演出模型已停用，不能開始新場次。")
     if type(running) is not bool or type(pending_transaction) is not bool:
         raise ValueError("策略鎖定狀態必須來自明確的執行／交易狀態")
     if existing_run_id is not None and (not isinstance(existing_run_id, str) or not existing_run_id):
@@ -214,9 +255,12 @@ def current_policy_selection_state(variant_id, *, running=False, pending_transac
         existing_run_id=None if active is None else active.run_id)
     actual = None if active is None else active.evidence.get('exam_policy_variant')
     result.update(active_run_id=None if active is None else active.run_id,
-        active_variant_id=actual if actual in POLICY_VARIANT_IDS else None,
+        active_variant_id=actual if actual in (*POLICY_VARIANT_IDS, *SELECTABLE_POLICY_VARIANT_IDS) else None,
         reason_kind='active-run' if active is not None else 'pending' if pending_transaction else 'running' if running else None,
         authority='durable-active-run')
+    if actual in POLICY_VARIANT_IDS:
+        result.update(locked=True, reason='舊 BC 場次已保留；本版停用 BC，請使用先前版本處理該場次，不能直接換成 RL 續跑。',
+            reason_kind='archived-model-run', resume_blocked=True)
     return result
 
 

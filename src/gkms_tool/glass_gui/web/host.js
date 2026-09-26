@@ -12,7 +12,7 @@ window.GKMS_PROJECT_MODE = true;
   if(supplied)history.replaceState(null,'',location.pathname);
   const header=project?'X-GKMS-Token':'X-GKMS-Setup-Token';
   const ownerWrites=new Set(['detect','install-control','install-translation','restore-all','recover','choose-folder','choose-control',
-    'loadout.refresh','loadout.read','loadout.recommend','loadout.constraints','loadout.apply',
+    'loadout.refresh','loadout.read','loadout.recommend','loadout.constraints','loadout.apply','loadout.mode','loadout.cancel',
     'preview-install-control','preview-install-translation','preview-restore-all','preview-recover','save-setup-preferences']);
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   function completed(data,request_id) {

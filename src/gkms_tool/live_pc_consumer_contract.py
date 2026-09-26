@@ -188,7 +188,14 @@ def validate_live_pc_consumer_identity(engine):
         _require(engine.get('method_profile') == NEW_METHOD_PROFILE,
             'Updated PC model input requires the verified default native method profile')
         from .portable_model_assets import configured_portable_assets
-        package = configured_portable_assets()
+        from .application_paths import public_installation
+        private_source_proof = False
+        if not public_installation():
+            from .private_runtime_sources import private_runtime_io_reference
+            private_source_proof = private_runtime_io_reference() is not None
+        # A reviewed private source-only change keeps the same full PC identity
+        # proof. The unchanged public portable package retains its own pins.
+        package = None if private_source_proof else configured_portable_assets()
         if package is None:
             reader, body = _load_evidence(EVIDENCE_REFERENCE['path'], EVIDENCE_REFERENCE['sha256'])
             reader.validate_unchanged()

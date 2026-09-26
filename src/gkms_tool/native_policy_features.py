@@ -112,6 +112,34 @@ def verify_primary_kernel_bridge(contract_set, original_shared_reference, *, loa
         'new_policy_observation_training_qualified': False}
 
 
+def _owned_execution_master(inputs, source, initialization):
+    """Keep original scenario identity separate from the initialized Master."""
+    reference = inputs['master_manifest']
+    manifest = _read(reference)
+    original = source['expected']['master_hash']
+    master = manifest.get('archived_master_hash')
+    if (manifest.get('schema') != 'gkms.pc-versioned-master-input.v1'
+            or not isinstance(master, str) or len(master) != 64
+            or any(c not in '0123456789abcdef' for c in master)
+            or inputs.get('master_manifest_sha256') != reference['sha256']):
+        raise ValueError('Owned policy execution Master manifest differs')
+    policy = inputs.get('execution_master_policy', 'source-exact')
+    if policy not in ('source-exact', 'policy-mc-current-master'):
+        raise ValueError('Owned policy execution Master policy is unsupported')
+    if policy == 'source-exact' and master != original:
+        raise ValueError('Source-exact policy cannot change the original Master')
+    if policy == 'policy-mc-current-master':
+        expected = {'original_source_master_hash': original, 'execution_master_hash': master,
+            'execution_master_policy': policy, 'same_master_as_original_source': master == original,
+            'replay_identity': 'original-scenario-current-master-policy-mc',
+            'teacher_score_comparison_qualified': False, 'exact_replay_claimed': False}
+        for observed in (initialization, initialization.get('source_difficulty', {})):
+            if any(observed.get(key) != value or type(observed.get(key)) is not type(value)
+                   for key, value in expected.items()):
+                raise ValueError('Owned policy initialization does not bind its actual execution Master')
+    return original, master, deepcopy(reference), policy
+
+
 class OwnedNativePolicySource:
     """Run-scoped source/version witness; decisions remain label-free."""
     def __init__(self, identity):
@@ -133,13 +161,14 @@ class OwnedNativePolicySource:
         if len(metadata) != 1 or metadata[0].get('sha256') != NATIVE_METADATA_SHA256:
             raise ValueError('Policy engine metadata differs from the original feature consumer')
         self.identity = deepcopy(identity)
-        self.master = source['expected']['master_hash']
+        self.source_master, self.master, self.execution_master_reference, self.execution_master_policy = _owned_execution_master(inputs, source, initialization)
         self.produce = source['produce_id']
         self.thread = threading.get_ident()
         self.native_core = NATIVE_CORE_SHA256
         self.native_metadata = NATIVE_METADATA_SHA256
         self._stamps = []
-        for reference in (identity['inputs_reference'], identity['source_reference'], inputs['reconstruction_manifest']):
+        for reference in (identity['inputs_reference'], identity['source_reference'], inputs['reconstruction_manifest'],
+                          identity['initialization_reference'], self.execution_master_reference):
             p = Path(reference['path']); s = p.stat()
             self._stamps.append((p, s.st_size, s.st_mtime_ns, s.st_ctime_ns))
 

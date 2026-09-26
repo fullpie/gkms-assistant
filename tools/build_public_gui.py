@@ -38,7 +38,7 @@ PUBLIC_EXCLUDED_MODULES = {'gkms_tool.gui_setup.developer_addon',
 BOOTSTRAP_EXCLUDED_MODULES = frozenset({'gkms_tool.gui_setup.service', 'gkms_tool.gui',
     'gkms_tool.glass_gui', 'gkms_tool.public_gui_entry', 'gkms_tool.portable_model_assets',
     'gkms_tool.portable_loadout_assets', 'gkms_tool.runtime_gui_exam_policy', 'gkms_tool.native_maintenance',
-    'numpy', 'scipy', 'pandas', 'matplotlib', 'PIL', 'cv2', 'maa', 'tkinter'})
+    'numpy', 'scipy', 'pandas', 'matplotlib', 'PIL', 'cv2', 'maa', 'tkinter', 'torch'})
 IDENTITY = {'product': PRODUCT, 'component': COMPONENT, 'channel': CHANNEL, 'platform': PLATFORM}
 PUBLIC_GITIGNORE = ('__pycache__/\n*.py[cod]\n.venv/\nvar/\nbuild/\ndist/\n*.egg-info/\n'
     'assets/model_runtime/\nassets/loadout/\nassets/outer_runtime/\nassets/display_labels/\nassets/control/\n.pytest_cache/\n')
@@ -113,8 +113,9 @@ def validate_model_bundle(root, expected_sha):
     root = Path(root).resolve(); manifest = root / 'manifest.json'
     if digest(manifest) != expected_sha: raise ValueError('Portable model manifest SHA differs')
     body = json.loads(manifest.read_bytes())
-    if (body.get('schema') != 'gkms.portable-model-assets.v1' or body.get('raw_game_or_replay_assets_included') is not False
-            or body.get('training_admitted') is not False or set(body.get('models', {})) != {'baseline', 'integrated'}):
+    if (body.get('schema') != 'gkms.portable-model-assets.v2' or body.get('raw_game_or_replay_assets_included') is not False
+            or body.get('training_admitted') is not False or set(body.get('models', {})) != {'rl_shared_iql'}
+            or body.get('optimizer_or_training_checkpoint_included') is not False):
         raise ValueError('Portable model bundle is outside the public inference scope')
     names = {'manifest.json'}
     for reference in body['files'].values():
@@ -271,7 +272,7 @@ def export_source(workspace, output):
     label_exporter=workspace/'scripts/export_portable_character_labels.py'
     if not label_exporter.is_file():label_exporter=workspace/'tools/export_portable_character_labels.py'
     if label_exporter.is_file():shutil.copyfile(label_exporter,tools/'export_portable_character_labels.py')
-    for name in ('public-gui-packaging.md','gui-update-recovery.md','portable-outer-assets.md'):
+    for name in ('public-gui-packaging.md','gui-update-recovery.md','portable-outer-assets.md','public-README.md'):
         packaging_doc = workspace/'docs'/name
         if packaging_doc.is_file():
             (output/'docs').mkdir(exist_ok=True)
@@ -296,17 +297,20 @@ def export_source(workspace, output):
             'Original GKMS Assistant project portions: All rights reserved. No additional open-source license is granted.\n'
             'This notice applies only to original project portions. Third-party components and modifications governed by their licenses retain those terms and source rights.\n'
             'See the accompanying third-party license inventories and corresponding source.\n', encoding='utf-8')
-    (output / 'README.md').write_text(
-        '# GKMS Assistant ' + VERSION + '\n\n'
-        'This is the allowlisted public GUI source export. It does not include account state, login credentials, research captures, game binaries or test DLLs.\n\n'
-        'Original project portions are all rights reserved; no additional open-source grant is made. Third-party licenses and source rights remain unchanged. See NOTICE and the license inventories.\n\n'
-        'The published application uses one existing GUI/controller owner. Two BC model choices share their original verified weights; selectable flows do not imply trained coverage or accepted policy quality.\n\n'
-        'Install the pinned dependencies and build extra, then use `python tools/build_public_gui.py --workspace . --output BUILD --model-assets MODEL_ASSETS --model-manifest-sha256 SHA --loadout-assets LOADOUT_ASSETS --outer-assets OUTER_ASSETS --display-labels DISPLAY_LABELS --control-package CONTROL_ZIP --control-sha256 CONTROL_SHA`. '
-        'Qualified model, loadout, outer-rule/behavior assets and the control package are required. The exported native-source ledger is reused without private build receipts. '
-        'Assets are separate release files, not checked into the source repository. See docs/public-gui-packaging.md. Inspect the machine-readable build report; a candidate is not a published release.\n\n'
-        'The managed Windows layout has a normal-user launcher and immutable version slots. The interface opens in its own Windows WebView2 window, not in Chrome. '
-        'Microsoft Edge WebView2 Evergreen Runtime and .NET Framework 4.7.2+ are required; the small presentation host is compiled from native/gui_window/Program.cs using the pinned Microsoft SDK. '
-        'User state stays in LocalAppData/gkms-assistant. GUI updates do not start or restart the game.\n', encoding='utf-8')
+    (output / 'README.md').write_text((workspace/'docs/public-README.md').read_text('utf-8').replace(
+        '{{VERSION}}', VERSION), encoding='utf-8')
+    for locale in ('en','ja'):
+        readme = workspace/f'docs/public-README.{locale}.md'
+        if readme.is_file():
+            shutil.copyfile(readme, output/f'docs/public-README.{locale}.md')
+            (output/f'README.{locale}.md').write_text(readme.read_text('utf-8').replace('{{VERSION}}', VERSION), encoding='utf-8')
+    for locale in ('zh-Hant','en','ja'):
+        for page in ('cultivation','setup'):
+            screenshot = workspace/f'docs/images/gui-{page}-{locale}.png'
+            if screenshot.is_file():
+                target = output/'docs/images'/screenshot.name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(screenshot, target)
     manifest = {'schema': 'gkms.public-source-export.v1', **IDENTITY, 'version': VERSION,
         'entry_modules': list(ENTRY_MODULES), 'module_count': len(records), 'modules': records,
         'coupled_legacy_modules': coupled, 'computed_import_sites': dynamic, 'external_import_roots': external,
@@ -326,13 +330,14 @@ def _build_executable(source, output, name, entry_module, logger, *, bootstrap=F
         '--name', name, '--distpath', str(output/'dist'), '--workpath', str(output/'work'/name),
         '--specpath', str(output/'spec'), '--paths', str(source/'src'),
         '--exclude-module', 'pytest', '--exclude-module', 'IPython', '--exclude-module', 'notebook',
-        '--exclude-module', 'speakeasy', '--exclude-module', 'torch']
+        '--exclude-module', 'speakeasy']
     for module in sorted(PUBLIC_EXCLUDED_MODULES): command.extend(['--exclude-module',module])
     if bootstrap:
-        excluded=BOOTSTRAP_EXCLUDED_MODULES|{'gkms_tool.'+Path(name).stem for name in numeric_sources}
+        excluded=BOOTSTRAP_EXCLUDED_MODULES|{'gkms_tool.'+str(Path(name).with_suffix('')).replace('\\','.') for name in numeric_sources}
         for module in sorted(excluded): command.extend(['--exclude-module',module])
     else:
         command.extend(['--add-data',str(source/'src/gkms_tool')+os.pathsep+'gkms_tool'])
+        command.extend(['--collect-binaries', 'torch', '--collect-data', 'torch'])
     command.append(str(entry))
     # Analysis must resolve the copied allowlist, not this development checkout.
     environment = dict(os.environ); environment['PYTHONPATH'] = str(source/'src')
@@ -407,10 +412,27 @@ def archive_public_source(directory, destination):
         archive.write(directory/'public-source-manifest.json','public-source-manifest.json')
 
 
-def attach_native_sources(workspace, source, receipt_path=None):
+def attach_native_sources(workspace, source, receipt_path=None, *, source_directory=None, source_manifest_sha256=None):
     source, workspace = Path(source), Path(workspace)
     destination = source/'native-source'
-    if receipt_path is not None:
+    if source_directory is not None:
+        if receipt_path is not None or not source_manifest_sha256:
+            raise ValueError('Choose a hash-bound existing source directory or a native build receipt')
+        original = Path(source_directory).resolve()
+        ledger = original/'SOURCE-MANIFEST.json'
+        if digest(ledger) != source_manifest_sha256:
+            raise ValueError('Existing public native source manifest changed')
+        native = json.loads(ledger.read_bytes())
+        if native.get('schema') != 'gkms.public-native-corresponding-source.v1' or native.get('public_profiles_only') is not True:
+            raise ValueError('Existing native source export is not public-qualified')
+        destination.mkdir()
+        for name, expected in native['files'].items():
+            path = original/name
+            if (not path.resolve().is_relative_to(original) or path.is_symlink() or digest(path) != expected):
+                raise ValueError('Existing native source file differs: '+name)
+            target = destination/name; target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(path, target)
+        shutil.copyfile(ledger,destination/'SOURCE-MANIFEST.json')
+    elif receipt_path is not None:
         path = workspace/'scripts/export_public_native_sources.py'
         if not path.is_file(): path = workspace/'tools/export_public_native_sources.py'
         spec = importlib.util.spec_from_file_location('gkms_public_native_exporter', path)
@@ -468,9 +490,9 @@ try:
     from gkms_tool.portable_model_assets import load_portable_model_assets,RELEASE_MANIFEST_SHA256
     package=load_portable_model_assets(assets,expected_sha256=RELEASE_MANIFEST_SHA256)
     report['models']={}
-    for variant in ('baseline','integrated'):
-        weights,metadata=package.load_parameters(variant)
-        report['models'][variant]={'original_model_sha256':metadata['original_model_sha256'],'tensors_equal_original':metadata['tensors_equal_original'],'tensor_count':len(weights)}
+    from gkms_tool.portable_actor_assets import load_actor_parameters
+    actor,metadata=load_actor_parameters(package)
+    report['models']['rl_shared_iql']={'original_model_sha256':metadata['original_model_sha256'],'tensors_equal_original':True,'tensor_count':len(actor.state_dict())}
     report['passed']=True
 except Exception as error:report.update(error=str(error),traceback=traceback.format_exc())
 destination.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8')
@@ -491,7 +513,8 @@ raise SystemExit(0 if report['passed'] else 2)
 
 
 def build(workspace, output, *, model_assets=None, model_manifest_sha256=MODEL_SHA, loadout_assets=None, outer_assets=None, display_labels=None, source_only=False,
-          control_package=None, control_sha256=None, native_source_receipt=None):
+          control_package=None, control_sha256=None, native_source_receipt=None,
+          native_source_directory=None, native_source_manifest_sha256=None):
     workspace, output = Path(workspace).resolve(), Path(output).resolve()
     if output == workspace or workspace.is_relative_to(output): raise ValueError('Build output cannot own the source workspace')
     output.mkdir(parents=True, exist_ok=False)
@@ -505,7 +528,10 @@ def build(workspace, output, *, model_assets=None, model_manifest_sha256=MODEL_S
     save()
     try:
         source = output/'source'; exported = export_source(workspace, source)
-        native_sources = attach_native_sources(workspace, source, native_source_receipt)
+        native_sources = attach_native_sources(workspace, source, native_source_receipt,
+            source_directory=native_source_directory, source_manifest_sha256=native_source_manifest_sha256)
+        if native_sources is not None and control_sha256 is not None and native_sources['control_archive_sha256'] != control_sha256:
+            raise ValueError('Public native corresponding source belongs to another control package')
         report.update(source_export_complete=exported['source_export_complete'],
             source_manifest_sha256=digest(source/'public-source-manifest.json'), blockers=exported['blockers'])
         report['native_source_export'] = native_sources
@@ -519,6 +545,10 @@ def build(workspace, output, *, model_assets=None, model_manifest_sha256=MODEL_S
         if model_assets is None:
             report['blockers'].append({'code': 'MODEL_ASSETS_PENDING'}); save(); return report
         model, model_files = validate_model_bundle(model_assets, model_manifest_sha256)
+        import torch
+        if torch.version.cuda is not None or torch.__version__.split('+')[0] != '2.10.0':
+            raise ValueError('Public RL packaging requires the pinned PyTorch 2.10.0 CPU build')
+        report['inference_runtime'] = {'torch': torch.__version__, 'device': 'cpu', 'cuda': False}
         if loadout_assets is None:
             report['blockers'].append({'code': 'LOADOUT_ASSETS_PENDING'}); save(); return report
         loadout_source, loadout_files = validate_loadout_bundle(loadout_assets)
@@ -667,11 +697,14 @@ def main(argv=None):
     parser.add_argument('--control-package', type=Path)
     parser.add_argument('--control-sha256')
     parser.add_argument('--native-source-receipt', type=Path)
+    parser.add_argument('--native-source-directory', type=Path)
+    parser.add_argument('--native-source-manifest-sha256')
     args = parser.parse_args(argv)
     result = build(args.workspace, args.output, model_assets=args.model_assets,
         model_manifest_sha256=args.model_manifest_sha256, loadout_assets=args.loadout_assets, outer_assets=args.outer_assets, display_labels=args.display_labels, source_only=args.source_only,
         control_package=args.control_package, control_sha256=args.control_sha256,
-        native_source_receipt=args.native_source_receipt)
+        native_source_receipt=args.native_source_receipt, native_source_directory=args.native_source_directory,
+        native_source_manifest_sha256=args.native_source_manifest_sha256)
     print(json.dumps({key: result[key] for key in ('source_export_complete', 'executable_build_complete',
         'package_validation_complete', 'self_check_complete', 'release_ready', 'blockers')}, ensure_ascii=False))
     return 0 if result['source_export_complete'] and (args.source_only or result['candidate_complete']) else 2

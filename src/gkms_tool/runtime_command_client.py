@@ -27,12 +27,32 @@ REQUEST_SCHEMA = "gkms.runtime-command.v1"
 RESULT_SCHEMA = "gkms.runtime-command-result.v1"
 STATUS_SCHEMA = "gkms.runtime-command-status.v1"
 READ_COMMANDS = frozenset({"status", "read_snapshot", "read_inventory", "read_model_context", "read_pc_contracts", "read_loadout", "read_outer_snapshot", "read_diagnostic",
-    "official_replay.inspect", "official_replay.poll"})
+    "official_replay.inspect", "official_replay.poll", "research.recommended.start", "research.recommended.poll", "research.recommended.ranges"})
 WRITE_COMMANDS = frozenset({"exam.play", "exam.drink", "exam.end_turn", "loadout.apply", "outer.action",
     "official_replay.prepare", "official_replay.start", "official_replay.release"})
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_RESULT_BYTES = 32 * 1024 * 1024
+RECOMMENDED_QUERY_COMMANDS = frozenset({'research.recommended.start', 'research.recommended.poll'})
+
+
+def _validate_recommended_query(command, target):
+    if not isinstance(target, Mapping):
+        raise RuntimeCommandProtocolError('recommended query target required')
+    keys = {'job_id'} if command.endswith('poll') else {
+        'job_id', 'produce_id', 'idol_card_id', 'min', 'max', 'is_high_score_rush', 'is_research'}
+    if set(target) != keys:
+        raise RuntimeCommandProtocolError('recommended query fields differ')
+    _identifier(target['job_id'], 'query job ID')
+    if command.endswith('poll'):
+        return
+    _identifier(target['idol_card_id'], 'query idol card ID')
+    if target['produce_id'] not in ('produce-004', 'produce-005'):
+        raise RuntimeCommandProtocolError('unsupported recommended query mode')
+    if any(type(target[k]) is not int or not 0 <= target[k] <= 2147483647 for k in ('min', 'max')) or target['min'] > target['max']:
+        raise RuntimeCommandProtocolError('invalid recommended level range')
+    if any(type(target[k]) is not bool for k in ('is_high_score_rush', 'is_research')):
+        raise RuntimeCommandProtocolError('recommended flags must be booleans')
 
 
 def _claim_lock():
@@ -109,6 +129,12 @@ class RuntimeCommandRequest:
         _identifier(self.session_generation, "session_generation")
         if self.command not in READ_COMMANDS | WRITE_COMMANDS:
             raise RuntimeCommandProtocolError("unsupported bridge command")
+        if self.command in RECOMMENDED_QUERY_COMMANDS:
+            _validate_recommended_query(self.command, self.target)
+        if self.command == 'research.recommended.ranges':
+            if (not isinstance(self.target, Mapping) or set(self.target) != {'max_level'}
+                    or type(self.target['max_level']) is not int or not 1 <= self.target['max_level'] <= 1024):
+                raise RuntimeCommandProtocolError('explicit bounded source-Master maximum level required')
         if self.command in WRITE_COMMANDS:
             revision = self.expected_revision
             if not ((type(revision) is int and revision >= 0) or
@@ -240,7 +266,35 @@ class RuntimeCommandClient:
                          separators=(",", ":")).encode("utf-8")
         if len(raw) > _MAX_REQUEST_BYTES:
             raise RuntimeCommandProtocolError("request exceeds bridge size limit")
-        if request.continuation_of is not None:
+        if request.command in RECOMMENDED_QUERY_COMMANDS:
+            with _claim_lock():
+                self.root.mkdir(parents=True, exist_ok=True)
+                collection_path = self.root / 'pending_research_collection.json'
+                if collection_path.exists():
+                    collection = _read_object(collection_path, limit=_MAX_REQUEST_BYTES)
+                    if (collection.get('schema') != 'gkms.recommended-collection-owner.v1'
+                            or (collection.get('owner') or {}).get('pid') != os.getpid()
+                            or not getattr(self, '_recommended_collection_token', None)
+                            or (collection.get('owner') or {}).get('token') != self._recommended_collection_token):
+                        raise RuntimeCommandUnavailable('another collector owns the recommended-query lane')
+                query_path = self.root / 'pending_recommended_query.json'
+                if request.command.endswith('start'):
+                    if (self.root / 'pending_action.json').exists():
+                        raise RuntimeCommandUnavailable('an ordinary DLL action is unresolved; query was not submitted')
+                    try:
+                        with query_path.open('xb') as stream:
+                            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+                    except FileExistsError as error:
+                        pending = _read_object(query_path, limit=_MAX_REQUEST_BYTES)
+                        if pending.get('request_id') == request.request_id:
+                            raise RuntimeCommandPending(request, 'query already reserved; await the original receipt') from error
+                        raise RuntimeCommandUnavailable('a recommended query remains unresolved; poll its original job ID') from error
+                else:
+                    pending = _read_object(query_path, limit=_MAX_REQUEST_BYTES)
+                    if (pending.get('session_generation') != request.session_generation
+                            or (pending.get('target') or {}).get('job_id') != request.target['job_id']):
+                        raise RuntimeCommandUnavailable('query poll does not match its original generation and job')
+        elif request.continuation_of is not None:
             with _claim_lock():
                 try:
                     parent = _read_object(self.root / "pending_action.json", limit=_MAX_REQUEST_BYTES)
@@ -256,6 +310,8 @@ class RuntimeCommandClient:
             # overtake an unresolved Exam action, or vice versa.
             with _claim_lock():
                 self.root.mkdir(parents=True, exist_ok=True)
+                if any((self.root / name).exists() for name in ('pending_recommended_query.json', 'pending_research_collection.json')):
+                    raise RuntimeCommandUnavailable('recommended-query research owns the input lane; ordinary action was not submitted')
                 try:
                     with (self.root / "pending_action.json").open("xb") as stream:
                         stream.write(raw)
@@ -331,7 +387,32 @@ class RuntimeCommandClient:
             raise RuntimeCommandProtocolError("mutating receipt must distinguish submission from completion")
         if outcome == "rejected":
             self.release_action(request)
+        if request.command in RECOMMENDED_QUERY_COMMANDS:
+            self._settle_recommended_query(request, result)
         return RuntimeCommandResult(request, outcome, result, path)
+
+    def _settle_recommended_query(self, request, result):
+        query = result.get('recommended_query') or {}
+        rejected_before_start = request.command.endswith('start') and result.get('status') == 'rejected'
+        terminal = (result.get('status') == 'ok' and query.get('schema') == 'gkms.native-recommended-query.v1'
+                    and query.get('status') in ('succeeded', 'failed') and query.get('get_result_consumed') is True)
+        if not rejected_before_start and not terminal:
+            return
+        with _claim_lock():
+            path = self.root / 'pending_recommended_query.json'
+            if not path.exists():
+                return
+            pending = _read_object(path, limit=_MAX_REQUEST_BYTES)
+            if pending.get('session_generation') != request.session_generation:
+                return
+            if rejected_before_start:
+                settled = (pending.get('request_id') == request.request_id and pending.get('target') == request.target
+                           and pending.get('command') == request.command)
+            else:
+                settled = (query.get('job_id') == (pending.get('target') or {}).get('job_id')
+                           and query.get('request') == pending.get('target'))
+            if settled:
+                path.unlink()
 
     def await_result(
         self, request: RuntimeCommandRequest, *, timeout: float = 15.0,

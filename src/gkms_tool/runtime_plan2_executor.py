@@ -81,6 +81,8 @@ def run_runtime_exam_policy(
     base = evidence_loader(Path(path)) if evidence_loader is not None else None
     directory = gateway.client.root / "exam_runs" / uuid.uuid4().hex
     steps = []
+    last_progress = None
+    last_settled_request = None
     native_capture = None
     stage_binding = None
     try:
@@ -90,6 +92,13 @@ def run_runtime_exam_policy(
         pass  # Capture archival is observational; the action gateway owns proof.
 
     def finish(accepted, terminal, reason):
+        if progress_callback is not None and last_progress is not None:
+            try:
+                progress_callback({**last_progress, "exam_action_count": sum(
+                    step.get("input_submitted") is True and step.get("status") == "settled"
+                    for step in steps)})
+            except Exception:
+                pass
         result = {"schema": report_schema, "accepted": accepted, "terminal": terminal,
                   "reason": reason, "actions_executed": sum(s.get("input_submitted") is True for s in steps),
                   "steps": steps, "action_executor": "dll-managed-single-action", "source_run_id": run_id if base is None else base.run_id}
@@ -147,17 +156,39 @@ def run_runtime_exam_policy(
             selected = {"kind": action.kind, "card_guid": getattr(action, "card_guid", None),
                         "slot": getattr(action, "slot_index", None), "drink_id": getattr(action, "drink_id", None),
                         "selected_card_guid": selection_guid}
+            detail = getattr(decision, 'metadata', None)
+            score_prediction = detail.get('score_prediction') if isinstance(detail, Mapping) else None
+            if isinstance(score_prediction, Mapping):
+                score_prediction = {**score_prediction, 'after_settled_request_id': last_settled_request,
+                    'boundary': 'settled-main' if last_settled_request is not None else 'initial-main'}
             if progress_callback is not None:
                 try:
-                    progress_callback({"source_run_id": base.run_id, "current_page": "exam",
+                    last_progress = {"source_run_id": base.run_id, "current_page": "exam",
+                        "exam_action_count": sum(
+                            step.get("input_submitted") is True and step.get("status") == "settled"
+                            for step in steps),
                         "monitor_snapshot": {"page": "exam", "source": "dll", "state": base.state.to_dict(),
                                              "recommendation": selected, "policy_source": getattr(decision, "policy_source", None),
+                                             'exam_state_identity': {
+                                                 'session_transition_id': getattr(base, 'session_transition_id', None),
+                                                 'session_generation': observed.native_session_generation,
+                                                 'source_revision': (observed.native_snapshot or {}).get('revision')},
+                                             **({'score_prediction':score_prediction} if score_prediction is not None else {}),
                                              **({'exam_policy':dict(policy.runtime_policy_binding)}
-                                                if isinstance(binding, Mapping) else {})}})
+                                                if isinstance(binding, Mapping) else {})}}
+                    progress_callback(last_progress)
                 except Exception:
                     pass
             if stop_requested():
                 return finish(False, False, "user-stop-requested")
+            if score_prediction is not None and progress_callback is not None and last_progress is not None:
+                from .rl.score_prediction import pending_update
+                last_progress = {**last_progress, 'monitor_snapshot': {**last_progress['monitor_snapshot'],
+                    'score_prediction': pending_update(score_prediction)}}
+                try:
+                    progress_callback(last_progress)
+                except Exception:
+                    pass
             outcome = gateway.execute(action.kind, base, card_guid=selected["card_guid"],
                                       slot=selected["slot"], drink_id=selected["drink_id"],
                                       preferred_selection_guid=selection_guid,
@@ -191,7 +222,17 @@ def run_runtime_exam_policy(
             if outcome.status != "settled" or outcome.evidence is None:
                 return finish(False, False, outcome.detail)
             base = outcome.evidence
+            last_settled_request = outcome.request_id
             if base.state.root_runtime is not None and base.state.root_runtime.is_exam_end_complete:
+                if score_prediction is not None and last_progress is not None:
+                    from .rl.score_prediction import terminal_prediction
+                    prediction = terminal_prediction(score_prediction, score=base.state.score,
+                        request_id=outcome.request_id,
+                        state_sha256=None if outcome.provenance is None else outcome.provenance.to_dict().get('canonical_state_sha256'))
+                    last_progress = {**last_progress, 'monitor_snapshot': {**last_progress['monitor_snapshot'],
+                        'state': base.state.to_dict(), 'score_prediction': prediction,
+                        'exam_state_identity': {**last_progress['monitor_snapshot'].get('exam_state_identity', {}),
+                                                'source_revision': None}}}
                 return finish(True, True, "native-exam-terminal")
         except Exception as error:
             return finish(False, False, f"{error_prefix}:{type(error).__name__}:{error}")

@@ -21,9 +21,11 @@ import numpy as np
 from .training_artifact_io import canonical_json_bytes, sha256_file
 
 SCHEMA = "gkms.portable-model-assets.v1"
+ACTOR_SCHEMA = "gkms.portable-model-assets.v2"
 DEFAULT_RELATIVE = Path("assets/model_runtime")
 ENVIRONMENT_VARIABLE = "GKMS_PORTABLE_MODEL_ASSETS"
-RELEASE_MANIFEST_SHA256 = "e85b8eae35b917f04776ef7ea8c208d47e7a5558c38e71c5a0f9a256d1761923"
+RELEASE_MANIFEST_SHA256 = "5174fd80a0e58482d1a85bb70ec189289e24545889ccd3d86bbd4021788fe25d"
+LEGACY_MANIFEST_SHA256 = "2a5142b977048e019c3898337642826ab421cd9b98d13c403343895a96d5d3f6"
 _SEAL = object()
 _CACHE = {}
 _MODEL_SHA = {"baseline": "9200a547d7c45058b115a6d0f6ea77b12d237bfc86f131a5ebcb1054c91e3834",
@@ -85,14 +87,31 @@ class PortableModelAssets:
         self.reference = {"path": str(manifest), "sha256": expected_sha256}
         self.manifest = json.loads(raw)
         body = self.manifest
-        _require(body.get("schema") == SCHEMA and set(body.get("models", {})) == set(_MODEL_SHA)
+        actor = body.get("schema") == ACTOR_SCHEMA
+        identities = ({"rl_shared_iql": "961dbeae592f891f6da7185c8ee051d2d199cc0f362c5910c48073a71317fab1"}
+            if actor else _MODEL_SHA)
+        _require(body.get("schema") in {SCHEMA, ACTOR_SCHEMA} and set(body.get("models", {})) == set(identities)
             and body.get("training_admitted") is False and body.get("raw_game_or_replay_assets_included") is False,
             "Portable inference manifest scope differs")
         for variant, model in body["models"].items():
-            _require(model["original_model_sha256"] == _MODEL_SHA[variant], "Portable model source identity differs")
+            _require(model["original_model_sha256"] == identities[variant], "Portable model source identity differs")
+        equivalents = body.get("numeric_source_equivalences", {})
+        _require(not equivalents or actor and set(equivalents) == {"training_artifact_io.py"},
+            "Public source equivalence scope differs")
+        for name, bridge in equivalents.items():
+            _require(bridge.get("whole_original_module_AST_equal") is True
+                and bridge.get("addition_used_by_original_functions") is False
+                and body["numeric_sources"][name] == bridge.get("runtime_sha256")
+                and all(re.fullmatch("[a-f0-9]{64}", str(bridge.get(key, ""))) for key in
+                    ("original_sha256", "runtime_sha256", "source_proof_sha256")),
+                "Public additive I/O bridge identity differs")
         source_dir = Path(__file__).resolve().parent
         for name, sha in body["numeric_sources"].items():
-            _require(Path(name).name == name and name.endswith(".py"), "Invalid frozen numerical source name")
+            relative = PurePosixPath(name)
+            _require(not relative.is_absolute() and ".." not in relative.parts and ":" not in name
+                and "\\" not in name and name.endswith(".py")
+                and (len(relative.parts) == 1 or actor and len(relative.parts) == 2 and relative.parts[0] == "rl"),
+                "Invalid frozen numerical source name")
             self._read_path(source_dir / name, sha)
         # All declared assets are checked, including those not needed by the selected head.
         for ref in body["files"].values():
@@ -139,6 +158,9 @@ class PortableModelAssets:
         return {"contract_sha256": self.manifest["trained_integrated_contract_sha256"]}
 
     def descriptor(self, variant):
+        if variant == "rl_shared_iql" and self.manifest["schema"] == ACTOR_SCHEMA:
+            from .portable_actor_assets import actor_descriptor
+            return actor_descriptor(self)
         _require(variant in _MODEL_SHA, "Unknown portable model variant")
         self.validate_unchanged()
         from .gui_exam_models import POLICY_VARIANT_LABELS
@@ -185,7 +207,13 @@ def configured_portable_assets(*, project_root=None):
     if package is None:
         return None
     _require(package.is_absolute(), "Configured portable assets require an absolute local directory")
-    return load_portable_model_assets(package, expected_sha256=RELEASE_MANIFEST_SHA256)
+    from .application_paths import public_installation
+    expected = RELEASE_MANIFEST_SHA256
+    # Private hosts may retain the already-pinned static package while their
+    # actor lives in the private registry. Public slots require this release.
+    if not public_installation(project_root) and sha256_file(package / "manifest.json") == LEGACY_MANIFEST_SHA256:
+        expected = LEGACY_MANIFEST_SHA256
+    return load_portable_model_assets(package, expected_sha256=expected)
 
 
 # This constructor has a separate, public-export authority. It never opens or
@@ -241,9 +269,11 @@ class PortableFeatureEncoder(IntegratedExamFeatureEncoder):
         for contract in (original, assets.contracts["native_contract"], self._contract):
             _require(contract["contract_sha256"] == _digest({key: value for key, value in contract.items()
                 if key != "contract_sha256"}), "Portable numerical contract digest differs")
+        equivalents = assets.manifest.get("numeric_source_equivalences", {})
         _require(_common(original) == assets.contracts["common_representation"]
             and original["native_structure_contract"] == assets.contracts["native_contract"]
             and all(assets.manifest["numeric_sources"].get(name) == sha
+                or equivalents.get(name, {}).get("original_sha256") == sha
                 for name, sha in original["encoder_source_hashes"].items()),
             "Portable package differs from its source-verified numerical representation")
 

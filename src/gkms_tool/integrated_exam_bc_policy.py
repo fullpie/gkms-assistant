@@ -48,12 +48,35 @@ class IntegratedNativeBcPolicy:
 
     def __init__(self, specification, *, engine_identity):
         from .integrated_exam_bc_features import IntegratedExamFeatureEncoder
-        if not isinstance(specification, Mapping) or set(specification) != {'model', 'contract_set', 'original_shared_encoder'}:
+        required = {'model', 'contract_set', 'original_shared_encoder'}
+        optional = {'loader_compatibility', 'runtime_master_source'}
+        if (not isinstance(specification, Mapping) or not required <= set(specification)
+                or set(specification) - required - optional
+                or 'runtime_master_source' in specification and 'loader_compatibility' not in specification):
             raise ValueError('Explicit model, native contract set and original primary encoder references required')
         self.source = OwnedNativePolicySource(engine_identity)
-        self.encoder = IntegratedExamFeatureEncoder(specification['contract_set'], specification['original_shared_encoder'])
+        self.loader_compatibility = self.runtime_source = self.runtime_model_compatibility = None
+        options = {}
+        if 'loader_compatibility' in specification:
+            from .runtime_loader_compatibility import load_runtime_loader_compatibility
+            self.loader_compatibility = load_runtime_loader_compatibility(specification['loader_compatibility'])
+            options.update(source_resolver=self.loader_compatibility.make_source_resolver(),
+                           loader_compatibility=self.loader_compatibility)
+        if 'runtime_master_source' in specification:
+            from .runtime_master_source import load_runtime_master_source
+            from .runtime_master_features import RuntimeMasterFeatureEncoder
+            self.runtime_source = load_runtime_master_source(specification['runtime_master_source'])
+            if self.runtime_source.master_hash != self.source.master or self.source.produce not in self.runtime_source.produce_ids:
+                raise ValueError('Explicit runtime Master differs from the initialized native execution')
+            self.encoder = RuntimeMasterFeatureEncoder(specification['contract_set'], specification['original_shared_encoder'],
+                runtime_source=self.runtime_source, **options)
+        else:
+            self.encoder = IntegratedExamFeatureEncoder(specification['contract_set'], specification['original_shared_encoder'], **options)
+        if self.loader_compatibility is not None:
+            self.runtime_model_compatibility = self.loader_compatibility.validate_runtime_contract(self.encoder.contract)
         parameters, self.metadata = load_integrated_exam_bc_model(specification['model'],
-            expected_feature_contract=self.encoder.contract)
+            expected_feature_contract=(self.loader_compatibility.trained_feature_contract
+                if self.loader_compatibility is not None else self.encoder.contract))
         self.model_reference = deepcopy(dict(specification['model']))
         self.policy = IntegratedExamBcPolicy(parameters, self.encoder)
 
@@ -63,6 +86,10 @@ class IntegratedNativeBcPolicy:
         if kind not in ('main', 'secondary'):
             raise ValueError('Unimplemented native decision type requires an explicit interface and evidence')
         self.source.validate_owner(observation, kind)
+        if self.loader_compatibility is not None:
+            self.loader_compatibility.validate_unchanged()
+        if self.runtime_source is not None:
+            self.runtime_source.validate_unchanged()
         # Attach ownership to a separate adapter envelope. The controller's
         # original observation remains unchanged and keeps its original hash.
         adapted = dict(observation)
@@ -80,4 +107,11 @@ class IntegratedNativeBcPolicy:
             'decision_type': kind, 'one_shared_parameter_set': True, 'learned_model_used': learned,
             'native_forced_response': not learned, 'teacher_action_used': False,
             'legacy_rule_fallback': False, 'shadow_only': True, 'automatic_formal_model_activation': False}
+        if self.runtime_model_compatibility is not None:
+            response['policy_source']['runtime_model_compatibility'] = deepcopy(self.runtime_model_compatibility)
+            response['policy_source']['original_source_master_hash'] = self.source.source_master
+            response['policy_source']['execution_master_hash'] = self.source.master
+            response['policy_source']['execution_master_policy'] = self.source.execution_master_policy
+            if self.runtime_source is not None:
+                response['policy_source']['runtime_master_source'] = self.runtime_source.reference
         return response

@@ -207,9 +207,9 @@ class RuntimeExamGateway:
     def bind_model_policy(self, policy):
         binding = getattr(policy, 'runtime_policy_binding', None)
         if (not isinstance(binding, Mapping) or binding.get('loaded') is not True
-                or binding.get('variant_id') not in ('baseline','integrated')
+                or binding.get('variant_id') != 'rl_shared_iql'
                 or not callable(getattr(policy, 'choose_secondary', None))):
-            raise RuntimeCommandError('A loaded explicit two-model policy is required')
+            raise RuntimeCommandError('Only a loaded fixed RL model may submit new model actions; BC is disabled')
         if self.model_policy is not None and json_bytes(self.model_policy.runtime_policy_binding) != json_bytes(binding):
             raise RuntimeCommandError('The current exam model cannot change within its gateway')
         self.model_policy = policy
@@ -271,9 +271,9 @@ class RuntimeExamGateway:
         preferred_selection_guid: str | None = None,
         secondary_policy: str | None = None,
     ) -> RuntimeExamOutcome:
-        if secondary_policy not in (None, "native-card-choice-value-v1", "gui-exam-bc-v1"):
+        if secondary_policy not in (None, "native-card-choice-value-v1", "gui-exam-bc-v1", "rl-exam-shared-iql-v1"):
             raise RuntimeCommandError("unsupported native secondary selection policy")
-        if secondary_policy == 'gui-exam-bc-v1' and self.model_policy is None:
+        if secondary_policy in ('gui-exam-bc-v1', 'rl-exam-shared-iql-v1') and self.model_policy is None:
             raise RuntimeCommandError('The selected model does not own secondary decisions')
         with self.lease(self.timeout):
             if self.cancelled is not None and self.cancelled() and not self.pending_path.exists():
@@ -305,7 +305,7 @@ class RuntimeExamGateway:
             raw_snapshot = snapshot_result.snapshot
             assert raw_snapshot is not None
             source_execution_master = None
-            if secondary_policy == "gui-exam-bc-v1":
+            if secondary_policy in ("gui-exam-bc-v1", "rl-exam-shared-iql-v1"):
                 dto = raw_snapshot.get("exam_model_observation")
                 master = dto.get("execution_master") if isinstance(dto, Mapping) else None
                 if (not isinstance(dto, Mapping) or dto.get("schema") != "gkms.live-exam-model-observation.v1"
@@ -527,6 +527,8 @@ class RuntimeExamGateway:
         if previous is not None and previous["revision"] == native.get("revision"):
             return None
         if pending.get('secondary_policy') == 'gui-exam-bc-v1':
+            return 'The previous BC model is disabled; preserve this pending operation without replacing its policy'
+        if pending.get('secondary_policy') == 'rl-exam-shared-iql-v1':
             self._validate_pending_model(pending)
             if self.model_policy is None:
                 return 'pending model secondary policy is unavailable'

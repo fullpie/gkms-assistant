@@ -1,7 +1,7 @@
 """Owner-thread web projection of the existing card-library panel and workers."""
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import hashlib
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ import threading
 
 from ..account_loadout import LoadoutConstraints, LoadoutSelection, save_loadout_constraints, validate_selection
 
-ACTIONS = frozenset({"loadout.status", "loadout.refresh", "loadout.read", "loadout.recommend", "loadout.constraints", "loadout.apply"})
+ACTIONS = frozenset({"loadout.status", "loadout.refresh", "loadout.read", "loadout.recommend", "loadout.constraints", "loadout.apply", "loadout.mode", "loadout.cancel"})
 READ_ACTIONS = frozenset({"loadout.status"})
 
 
@@ -87,6 +87,13 @@ class LoadoutService:
             return False
         return True
 
+    def can_cancel_recommendation(self):
+        self._owner()
+        panel=self.panel
+        return bool(panel is not None and panel._busy and panel._task_kind=="recommend"
+            and getattr(panel,"recommendation_mode",None)=="shared_offline_rl"
+            and not panel._game_busy and not panel._cancel.is_set())
+
     def snapshot(self):
         self._owner()
         panel = self.panel
@@ -99,7 +106,19 @@ class LoadoutService:
         except (OSError, ValueError, TypeError) as error:
             pending, pending_error = None, str(error)
         blocked = bool(panel._busy or panel._game_busy or panel._invalid_pending or pending_error or pending or self._has_pending_files())
-        proposals = [_proposal(row) for row in panel._recommendations if not row.selection.memory_ids]
+        mode = getattr(panel, "recommendation_mode", "game_and_rules")
+        rl_mode = mode == "shared_offline_rl"
+        proposals = [_proposal(row) for row in panel._recommendations if not row.selection.memory_ids or rl_mode]
+        from ..application_paths import public_installation
+        methods = [{"id": "game_and_rules", "label": "既有支援排序＋遊戲回憶推薦", "available": True}]
+        if not public_installation(self.root):
+            from ..private_loadout_mode import private_rl_descriptor
+            try:
+                descriptor = private_rl_descriptor(root=self.root)
+                rl_error = None
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                descriptor, rl_error = None, str(error)
+            methods.append({"id": "shared_offline_rl", "label": "RL 輔助支援卡＋回憶推薦", "available": descriptor is not None, "reason": rl_error})
         scope = panel.selection_scope() if panel.selection_scope is not None else (None, None)
         raw = None if inventory is None else inventory.to_dict()
         names = {}
@@ -112,7 +131,10 @@ class LoadoutService:
         rentals = []
         for rental in panel._rentals.values():
             rentals.append({**asdict(rental), "name": panel.names.get(rental.card_id, rental.card_id)})
-        return _plain({"schema": "gkms.gui-loadout.v1", "available": True, "status": panel.status.get(),
+        progress = panel.recommendation_snapshot() if hasattr(panel,"recommendation_snapshot") else None
+        status = panel.recommendation_progress_text() if panel._busy and panel._task_kind=="recommend" and progress else panel.status.get()
+        return _plain({"schema": "gkms.gui-loadout.v1", "available": True, "status": status,
+            "recommendation_progress": progress,
             "busy": bool(panel._busy), "game_busy": bool(panel._game_busy), "task": panel._task_kind,
             "inventory": raw, "inventory_source": "cached-validated-DLL-inventory" if raw is not None else None,
             "inventory_digest": None if inventory is None else inventory.content_digest, "names": names,
@@ -120,15 +142,19 @@ class LoadoutService:
             "rentals": rentals, "loadout": panel._loadout, "recommendations": proposals,
             "pending_apply": pending, "pending_invalid": bool(panel._invalid_pending or pending_error),
             "pending_error": pending_error, "can_reconcile_pending": self.can_reconcile_pending(),
-            "capabilities": {"refresh": not blocked, "read": not blocked or self.can_reconcile_pending(),
+            "recommendation_mode": mode, "recommendation_methods": methods,
+            "recommendation_evidence": getattr(panel, "recommendation_evidence", None),
+            "capabilities": {"cancel": self.can_cancel_recommendation(), "mode": not blocked, "refresh": not blocked, "read": not blocked or self.can_reconcile_pending(),
                 "recommend": not blocked and inventory is not None and panel.selection_scope is not None,
                 "constraints": not blocked and inventory is not None and panel.selection_scope is not None,
                 "apply": not blocked and inventory is not None and isinstance(panel._loadout, dict)
                     and panel._loadout.get("active_section") == "support"},
-            "recommendation_sections": ["support"], "memory_selection_method": "game-native-auto-before-produce",
-            "memory_exclusion_supported": False,
+            "recommendation_sections": ["support", "memory"] if rl_mode else ["support"],
+            "memory_selection_method": "rl-selected-after-native-auto" if rl_mode else "game-native-auto-before-produce",
+            "memory_exclusion_supported": rl_mode,
             "unsupported_memory_exclusions": list(panel.constraints.excluded_memory_ids),
-            "recommendation_scope": "推薦支援卡；回憶於培育前使用遊戲自動編成。支援依已知初始能力與 SP 排序，不是整場預估分數。"})
+            "recommendation_scope": (((getattr(panel, "recommendation_evidence", None) or {}).get("method")
+                or "固定 RL 模型輔助編成；尚未完成本次評估，未驗證分數改善。") if rl_mode else "推薦支援卡；回憶於培育前使用遊戲自動編成。支援依已知初始能力與 SP 排序，不是整場預估分數。")})
 
     def _ready(self, action):
         panel = self.panel
@@ -149,7 +175,8 @@ class LoadoutService:
         if not isinstance(data, dict) or set(data) - fields:
             raise ValueError("Unknown loadout constraint fields")
         constraints = LoadoutConstraints.from_dict(data)
-        if constraints.excluded_memory_ids and constraints.excluded_memory_ids != panel.constraints.excluded_memory_ids:
+        if (constraints.excluded_memory_ids and constraints.excluded_memory_ids != panel.constraints.excluded_memory_ids
+                and getattr(panel, "recommendation_mode", "game_and_rules") != "shared_offline_rl"):
             raise ValueError("本版回憶使用遊戲自動編成，不支援新增回憶排除；既有排除可明確解除，鎖定仍可保留。")
         supports = set(constraints.locked_support_ids) | set(constraints.excluded_support_ids)
         memories = set(constraints.locked_memory_ids) | set(constraints.excluded_memory_ids)
@@ -163,6 +190,8 @@ class LoadoutService:
         save_loadout_constraints(panel.constraints_path, constraints, account_scope=inventory.account_scope,
             inventory_digest=inventory.content_digest, produce_id=produce_id, idol_card_id=idol_card_id)
         panel.constraints = constraints
+        from ..private_loadout_mode import clear_prepared_recommendation
+        clear_prepared_recommendation(root=self.root)
         panel._recommendations = ()
         panel.recommendation_choice.configure(values=("手動編成",))
         panel.recommendation_choice_var.set("手動編成")
@@ -198,7 +227,11 @@ class LoadoutService:
             label = None
         if (selection.produce_id, selection.idol_card_id) != panel.selection_scope():
             raise ValueError("培育偶像或模式已變更，請重新計算編成。")
-        validate_selection(inventory, selection, constraints=panel.constraints, section="support")
+        if selection.memory_ids and getattr(panel, "recommendation_mode", "game_and_rules") == "shared_offline_rl":
+            from ..private_loadout_mode import validate_selection_for_review
+            validate_selection_for_review(inventory, selection, constraints=panel.constraints)
+        else:
+            validate_selection(inventory, selection, constraints=panel.constraints, section="support")
         panel.recommendation_choice_var.set(choice)
         if label is not None:
             panel.rental_choice_var.set(label)
@@ -210,6 +243,7 @@ class LoadoutService:
             raise ValueError("Unsupported loadout action")
         allowed = {"operationId"}
         if action == "loadout.constraints": allowed.add("constraints")
+        if action == "loadout.mode": allowed.add("mode")
         if action == "loadout.apply": allowed |= {"inventory_digest", "recommendation_id", "rental_key"}
         if set(payload) - allowed:
             raise ValueError("Unknown loadout command field")
@@ -225,6 +259,12 @@ class LoadoutService:
             if operation_id in self._operation_errors:
                 raise RuntimeError(self._operation_errors[operation_id])
             return {"ok": True, "accepted": True, "replayed": True, "operationId": operation_id, "snapshot": self.snapshot()}
+        if action == "loadout.cancel":
+            if not self.can_cancel_recommendation():
+                raise ValueError("目前沒有可停止的 RL 推薦工作，或已要求停止。")
+            self._operations[operation_id] = identity
+            self.panel.cancel_recommendation()
+            return {"ok":True,"accepted":True,"operationId":operation_id,"application_confirmed":False,"snapshot":self.snapshot()}
         self._ready(action)
         if action in {"loadout.recommend", "loadout.constraints", "loadout.apply"} and self.panel.snapshot is None:
             raise ValueError("請先更新完整帳號牌庫。")
@@ -239,7 +279,22 @@ class LoadoutService:
         # retry observes this operation; it never invokes another worker.
         self._operations[operation_id] = identity
         try:
-            if action == "loadout.constraints": self._constraints(payload.get("constraints"))
+            if action == "loadout.mode":
+                from ..private_loadout_mode import RL, private_rl_descriptor, save_recommendation_mode
+                mode = payload.get("mode")
+                if mode == RL:
+                    private_rl_descriptor(root=self.root, refresh=True)
+                save_recommendation_mode(mode, root=self.root)
+                from ..private_loadout_mode import clear_prepared_recommendation
+                clear_prepared_recommendation(root=self.root, reason="recommendation-mode-changed")
+                self.panel.recommendation_mode = mode
+                self.panel._recommendations = ()
+                self.panel.recommendation_evidence = None
+                self.panel.recommendation_progress = None
+                self.panel.recommendation_choice.configure(values=("手動編成",))
+                self.panel.recommendation_choice_var.set("手動編成")
+                self.panel.status.set("已儲存下次培育的推薦方式；請重新計算，未變更遊戲編成。")
+            elif action == "loadout.constraints": self._constraints(payload.get("constraints"))
             else:
                 method = {"loadout.refresh": "refresh", "loadout.read": "read_loadout", "loadout.recommend": "recommend", "loadout.apply": "apply_loadout"}[action]
                 getattr(self.panel, method)()

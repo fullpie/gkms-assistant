@@ -9,6 +9,7 @@ from pathlib import Path
 import queue
 import sqlite3
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -251,6 +252,9 @@ class CardLibraryPanel(_WorkerPanel):
         self._rentals: dict[str, object] = {}
         self._recommendations: tuple[object, ...] = ()
         self._catalog = None
+        from .private_loadout_mode import load_recommendation_mode
+        self.recommendation_mode = load_recommendation_mode()
+        self.recommendation_evidence = None
         self.constraints_path = path.parent / "loadout_constraints.json"
         self._load_display_names()
         self.snapshot: AccountInventorySnapshot | None = None
@@ -382,22 +386,79 @@ class CardLibraryPanel(_WorkerPanel):
         snapshot, constraints = self.snapshot, self.constraints
         produce_id, idol_card_id = self.selection_scope()
         self._task_kind = "recommend"
-        self.status.set("正在依實際強化數值與 SP 加成推薦支援卡…")
+        mode = getattr(self, "recommendation_mode", "game_and_rules")
+        self._recommendation_started_at = time.monotonic() if mode == "shared_offline_rl" else None
+        self.recommendation_progress = ({"phase":"reading-loadout","processed":0,"total":None,
+            "succeeded":0,"failed":0,"cached_candidates":0,"elapsed_seconds":0.} if mode == "shared_offline_rl" else None)
+        self.status.set("正在以固定 RL 模型評估支援卡與回憶組合…" if mode == "shared_offline_rl" else "正在依實際強化數值與 SP 加成推薦支援卡…")
 
         def operation() -> object:
-            from .account_loadout import recommend_initial_supports
+            from .private_loadout_mode import recommend_with_mode, private_rl_descriptor
             from .passive_catalog import MasterPassiveCatalog
 
             loadout = read_game_loadout_for_gui()
+            if mode == "shared_offline_rl" and self._cancel.is_set():
+                return {"cancelled":True,"loadout":loadout,"mode":mode}
             if self._catalog is None:
                 self._catalog = MasterPassiveCatalog.load()
-            proposals = recommend_initial_supports(
-                snapshot, loadout, constraints=constraints, idol_card_id=idol_card_id,
-                produce_id=produce_id, catalog=self._catalog,
-            )
-            return {"loadout": loadout, "recommendations": proposals}
+            descriptor = private_rl_descriptor(refresh=True) if mode == "shared_offline_rl" else None
+            evaluation_report = {}
+            cancelled_errors = ()
+            if mode == "shared_offline_rl":
+                from .rl_loadout_advisor import LoadoutRecommendationCancelled
+                cancelled_errors = (LoadoutRecommendationCancelled,)
+            try:
+                proposals = recommend_with_mode(
+                    snapshot, loadout, mode=mode, constraints=constraints, idol_card_id=idol_card_id,
+                    produce_id=produce_id, catalog=self._catalog, descriptor=descriptor,
+                    report_callback=evaluation_report.update,
+                    progress_callback=lambda value:self._events.put(("progress",value)),
+                    cancelled=self._cancel.is_set,
+                )
+            except cancelled_errors:
+                return {"cancelled":True,"loadout":loadout,"mode":mode}
+            return {"loadout": loadout, "recommendations": proposals, "mode": mode,
+                    "recommendation_evidence": None if descriptor is None else {
+                        "model_sha256": descriptor["model_sha256"],
+                        "quality_improvement_verified": False,
+                        "method": ("固定 RL 模型／原生演出評估；培育收益採來源綁定估算"
+                            if evaluation_report.get("score_kind") == "native-policy-score" else
+                            "固定 RL Value 輔助估計；不是實際演出分數" if evaluation_report.get("score_kind") == "remaining-return-value-proxy"
+                            else "固定 RL 模型評估；詳細分數種類尚未回傳"),
+                        "score_kind": evaluation_report.get("score_kind"),
+                        "elapsed_seconds": evaluation_report.get("elapsed_seconds"),
+                        "completed_candidates": evaluation_report.get("completed"),
+                        "rental_parameters": {row["rental_key"]: row.get("produce_parameters")
+                            for row in loadout.get("rental_support_cards", ())}}}
 
         self._launch(operation)
+
+    def recommendation_snapshot(self):
+        value = getattr(self,"recommendation_progress",None)
+        if value is None:return None
+        value = dict(value)
+        started = getattr(self,"_recommendation_started_at",None)
+        if self._busy and self._task_kind == "recommend" and started is not None:
+            value["elapsed_seconds"] = max(0.,time.monotonic()-started)
+        value["cancel_requested"] = bool(getattr(self,"_cancel",None) and self._cancel.is_set()
+            and self._busy and self._task_kind == "recommend")
+        return value
+
+    def cancel_recommendation(self):
+        if not self._busy or self._task_kind != "recommend" or getattr(self,"recommendation_mode",None)!="shared_offline_rl":
+            raise ValueError("目前沒有可停止的 RL 推薦工作。")
+        self._cancel.set()
+        self.status.set("已要求停止推薦；等待目前讀取或模擬結束，完成快取會保留。")
+
+    def recommendation_progress_text(self):
+        value=self.recommendation_snapshot()
+        if not value:return self.status.get()
+        elapsed=int(value.get("elapsed_seconds",0));total=value.get("total")
+        counts=(f"完成 {value.get('processed',0)}/{total} 組 · 成功 {value.get('succeeded',0)} · "
+            f"失敗 {value.get('failed',0)} · 快取 {value.get('cached_candidates',0)} 組") if total is not None else "準備推薦資料"
+        suffix=" · 等待目前讀取／模擬結束後停止" if value.get("cancel_requested") else ""
+        if value.get("phase")=="cancelled":suffix=" · 已停止，完成快取保留"
+        return f"{counts} · 耗時 {elapsed//60}:{elapsed%60:02d}{suffix}"
 
     def _selected_recommendation(self):
         label = self.recommendation_choice_var.get()
@@ -412,7 +473,7 @@ class CardLibraryPanel(_WorkerPanel):
             selection = proposal.selection
             supports = "\n".join(self.names.get(key, key) for key in selection.support_card_ids)
             text = ("支援卡\n" + supports + "\n借卡：" + self.names.get(selection.borrowed_support.card_id, selection.borrowed_support.card_id)
-                    + "\n\n回憶於培育前使用遊戲自動編成。"
+                    + ("\n\n回憶\n" + "\n".join(selection.memory_ids) if selection.memory_ids else "\n\n回憶於培育前使用遊戲自動編成。")
                     + "\n\n推薦依據\n" + "\n".join(str(value) for value in proposal.reasons))
         self.recommendation_detail.configure(state="normal")
         self.recommendation_detail.delete("1.0", "end")
@@ -449,15 +510,34 @@ class CardLibraryPanel(_WorkerPanel):
             self.status.set("培育偶像或模式已變更，請重新計算編成。")
             return
         if selection.memory_ids:
-            self.status.set("舊方案包含自訂回憶；請重新推薦支援卡。")
-            return
+            if getattr(self, "recommendation_mode", "game_and_rules") != "shared_offline_rl":
+                self.status.set("舊方案包含自訂回憶；請重新推薦支援卡。")
+                return
+            # The existing support setter only touches supports. The fixed RL
+            # proposal's memories are applied at the normal memory preparation
+            # boundary by the original owner, never on this support page.
+            from .private_loadout_mode import validate_selection_for_review
+            validate_selection_for_review(self.snapshot, selection, constraints=self.constraints)
         snapshot = self.snapshot
+        fixed_proposal = proposal
+        fixed_constraints = self.constraints
+        fixed_evidence = getattr(self, "recommendation_evidence", None)
+        expected_loadout = self._loadout
         self._task_kind = "apply"
         self.status.set("正在核對版本並套用遊戲編成…")
 
         def operation() -> object:
             from .account_loadout import apply_account_loadout
 
+            if fixed_proposal is not None and fixed_proposal.selection.memory_ids:
+                if not isinstance(fixed_evidence, dict):
+                    raise ValueError("選中 RL 方案的固定模型證據缺失，請重新計算。")
+                from .private_loadout_mode import apply_rl_support_selection
+                result, _ = apply_rl_support_selection(snapshot, fixed_proposal,
+                    model_sha256=fixed_evidence["model_sha256"], constraints=fixed_constraints,
+                    expected_loadout=expected_loadout,
+                    expected_parameters=fixed_evidence.get("rental_parameters", {}).get(selection.borrowed_support.rental_key))
+                return result
             return apply_account_loadout(snapshot, selection, section="support")
 
         self._launch(operation)
@@ -510,7 +590,7 @@ class CardLibraryPanel(_WorkerPanel):
             self.status.set("培育偶像請在培育頁選擇。")
             return
         suffix = "support_ids" if self.kind.get() == "支援卡" else "memory_ids"
-        if suffix == "memory_ids" and action == "exclude":
+        if suffix == "memory_ids" and action == "exclude" and getattr(self, "recommendation_mode", "game_and_rules") != "shared_offline_rl":
             self.status.set("本版不提供回憶排除；回憶由遊戲自動編成。可鎖定指定回憶，或解除舊排除設定。")
             return
         locked = set(getattr(self.constraints, "locked_" + suffix)) - selected
@@ -570,6 +650,10 @@ class CardLibraryPanel(_WorkerPanel):
             return
         self._task_kind = "inventory"
         self._catalog = None
+        self._refresh_recommend_requested = getattr(self, "recommendation_mode", "game_and_rules") == "shared_offline_rl"
+        if self._refresh_recommend_requested:
+            from .private_loadout_mode import clear_prepared_recommendation
+            clear_prepared_recommendation(reason="inventory-refresh-requested")
         self.status.set("正在從 DLL 讀取完整帳號牌庫…")
         self._launch(lambda: refresh_account_inventory(self.path))
 
@@ -587,6 +671,13 @@ class CardLibraryPanel(_WorkerPanel):
             self.recommendation_choice.configure(state="disabled" if busy else "readonly")
 
     def _handle(self, kind: str, payload: object) -> None:
+        if kind == "progress" and self._task_kind == "recommend":
+            self.recommendation_progress = dict(payload)
+            self.status.set(self.recommendation_progress_text())
+            return
+        if self._task_kind == "recommend" and kind in ("complete","error") and getattr(self,"recommendation_progress",None) is not None:
+            self.recommendation_progress["elapsed_seconds"] = max(0.,time.monotonic()-self._recommendation_started_at)
+            self.recommendation_progress["phase"] = "failed" if kind == "error" else "cancelled" if payload.get("cancelled") else "complete"
         if kind == "complete":
             if self._task_kind == "inventory":
                 self.snapshot, changes = payload
@@ -600,6 +691,9 @@ class CardLibraryPanel(_WorkerPanel):
                 self._set_busy(False)
                 changed = sum(len(rows[key]) for rows in changes.values() for key in ("added", "removed", "changed"))
                 self.status.set(f"已從遊戲更新 · {self.snapshot.captured_at} · {changed} 項變更")
+                if getattr(self, "_refresh_recommend_requested", False):
+                    self._refresh_recommend_requested = False
+                    self.recommend()
             elif self._task_kind == "loadout":
                 try:
                     self._render_loadout(payload["loadout"])
@@ -620,17 +714,26 @@ class CardLibraryPanel(_WorkerPanel):
                     self.status.set(f"編成資料不可用：{error}")
             elif self._task_kind == "recommend":
                 self._render_loadout(payload["loadout"])
-                self._recommendations = tuple(row for row in payload["recommendations"] if not row.selection.memory_ids)
+                if payload.get("cancelled"):
+                    self.status.set("本次推薦已停止；完成的模擬快取保留，未套用新編成。")
+                    return
+                self._recommendations = tuple(row for row in payload["recommendations"]
+                    if not row.selection.memory_ids or payload.get("mode") == "shared_offline_rl")
+                self.recommendation_evidence = payload.get("recommendation_evidence")
                 labels = ("手動編成", *(f"建議 {index + 1}" for index in range(len(self._recommendations))))
                 self.recommendation_choice.configure(values=labels)
                 self.recommendation_choice_var.set(labels[1] if self._recommendations else labels[0])
                 self._show_recommendation()
-                self.status.set("支援卡建議已更新；回憶由遊戲自動編成。" if self._recommendations else "目前限制下沒有可用支援卡編成。")
+                self.status.set(("RL 支援卡與回憶建議已更新；培育準備時自動套用，尚未證明分數改善。"
+                    if payload.get("mode") == "shared_offline_rl" else "支援卡建議已更新；回憶由遊戲自動編成。")
+                    if self._recommendations else "目前限制下沒有可用編成。")
             elif self._task_kind == "apply":
                 if payload.status == "submitted" and payload.raw.get("applied") is True:
                     sections = payload.raw.get("applied_sections", [])
                     if sections == ["support"]:
-                        self.status.set("支援卡已套用；回憶於培育前使用遊戲自動編成。")
+                        self.status.set("支援卡已套用；回憶會於培育準備時依 RL 建議套用。"
+                            if getattr(self, "recommendation_mode", "game_and_rules") == "shared_offline_rl"
+                            else "支援卡已套用；回憶於培育前使用遊戲自動編成。")
                     else:
                         self.status.set("回覆範圍與本次僅套用支援卡不同，請重新讀取遊戲編成核對。")
                 else:

@@ -15,7 +15,7 @@ AUDITION_STRATEGY_LABELS = {
     "highest_available": "高檔優先，失敗降檔",
     "stable_clear": "穩定通關（最低可選）",
 }
-EXAM_POLICY_VARIANTS = ("baseline", "integrated")
+EXAM_POLICY_VARIANTS = ("baseline", "integrated", "rl_shared_iql")
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +24,7 @@ class GuiPreferences:
     produce_id: str = "produce-004"
     target_cycles: int = 1
     audition_strategy: str = "highest_available"
-    policy_variant_id: str = "baseline"
+    policy_variant_id: str = "rl_shared_iql"
 
     def __post_init__(self) -> None:
         for name in ("idol_card_id", "produce_id"):
@@ -47,7 +47,19 @@ def load_gui_preferences(path: Path = DEFAULT_GUI_PREFERENCES) -> GuiPreferences
         raise ValueError("GUI 偏好資料格式無效。")
     # The new next-run model preference does not rewrite historical settings.
     original = {key: payload[key] for key in ("idol_card_id", "produce_id", "target_cycles", "audition_strategy")}
-    return GuiPreferences(**original, policy_variant_id=payload.get("policy_variant_id", "baseline"))
+    variant = payload.get("policy_variant_id", "baseline")
+    if variant in ("baseline", "integrated"):
+        # Only the next idle run is migrated. Existing identities and pending
+        # commands retain their model, so the live owner can reject resumption
+        # explicitly instead of silently replacing a weight version.
+        from .run_identity import load_active_run
+        from .runtime_command_client import DEFAULT_BRIDGE_ROOT
+        active = load_active_run()
+        pending = any((DEFAULT_BRIDGE_ROOT / name).exists() for name in (
+            "pending_action.json", "pending_exam.json", "pending_outer.json", "pending_loadout.json"))
+        if active is None and not pending:
+            variant = "rl_shared_iql"
+    return GuiPreferences(**original, policy_variant_id=variant)
 
 
 def save_gui_preferences(preferences: GuiPreferences, path: Path = DEFAULT_GUI_PREFERENCES) -> None:

@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-These technical notes were moved from the original 0.1.0 README to keep the project landing page focused on users.
+These technical notes were moved from the original README and updated for 0.2.0 to keep the project landing page focused on users.
 
 ## Public source scope
 
@@ -10,17 +10,17 @@ This is the allowlisted public GUI source export. It does not include account st
 
 Original project portions are all rights reserved; no additional open-source grant is made. Third-party licenses and source rights remain unchanged. See [NOTICE](../NOTICE.txt) and the license inventories.
 
-The published application uses one existing GUI/controller owner. Two BC model choices share their original verified weights; selectable flows do not imply trained coverage or accepted policy quality.
+The published application uses the existing GUI/controller owner and one fixed shared RL exam model. BC models are disabled for live selection; their historical assets remain available for offline comparison. Model training scope does not imply equivalent live validation or accepted policy quality for every flow and mode.
 
 ## Building from this public repository
 
-Install the pinned dependencies and build extra, then use:
+Install the pinned dependencies and build extra, including the CPU build of PyTorch 2.10.0 from `https://download.pytorch.org/whl/cpu`, then use:
 
 ```text
 python tools/build_public_gui.py --workspace . --output BUILD --model-assets MODEL_ASSETS --model-manifest-sha256 SHA --loadout-assets LOADOUT_ASSETS --outer-assets OUTER_ASSETS --display-labels DISPLAY_LABELS --control-package CONTROL_ZIP --control-sha256 CONTROL_SHA
 ```
 
-Qualified model, loadout, outer-rule/behavior assets and the control package are required. The exported native-source ledger is reused without private build receipts. Assets are separate release files, not checked into the source repository.
+Qualified portable RL inference, loadout, outer-rule/behavior assets and the control package are required. The exported native-source ledger is reused without private build receipts. Assets are separate release files, not checked into the source repository. The public inference package excludes optimizer state, training replays and private native-simulation loadout search.
 
 See [public GUI packaging notes](public-gui-packaging.md). Inspect the machine-readable build report; a candidate is not a published release.
 

@@ -34,16 +34,16 @@ def package_self_check(slot, *, import_gui=True):
     character_catalog=load_nia_idol_catalog()
     if any(entry.character_id not in display_names for entry in character_catalog.entries):
         raise ValueError('Public idol selector has an unqualified character label')
-    models = {}
-    for variant in ('baseline', 'integrated'):
-        parameters, metadata = assets.load_parameters(variant)
-        policy = build_live_exam_policy(variant, produce_id='produce-004', idol_card_id='i_card-hume-3-006', run_id='public-package-self-check')
-        binding = policy.runtime_policy_binding
-        if binding['model_sha256'] != metadata['original_model_sha256'] or binding['portable_manifest_sha256'] != RELEASE_MANIFEST_SHA256:
-            raise ValueError('The actual public policy factory differs from its frozen artifact identity.')
-        models[variant] = {'original_model_sha256': metadata['original_model_sha256'],
-            'artifact_sha256': metadata['artifact_sha256'], 'tensors_equal_original': metadata['tensors_equal_original'],
-            'tensor_count': len(parameters), 'policy_factory_loaded': True, 'policy_binding_variant': binding['variant_id']}
+    variant = 'rl_shared_iql'
+    policy = build_live_exam_policy(variant, produce_id='produce-004', idol_card_id='i_card-hume-3-006', run_id='public-package-self-check')
+    binding = policy.runtime_policy_binding
+    if (binding['model_sha256'] != assets.manifest['models'][variant]['original_model_sha256']
+            or binding['portable_manifest_sha256'] != RELEASE_MANIFEST_SHA256):
+        raise ValueError('The actual public policy factory differs from its frozen artifact identity.')
+    models = {variant: {'original_model_sha256': binding['model_sha256'],
+        'artifact_sha256': binding['artifact_sha256'], 'tensors_equal_original': True,
+        'tensor_count': len(policy.model.state_dict()), 'policy_factory_loaded': True,
+        'policy_binding_variant': binding['variant_id'], 'device': 'cpu'}}
     if import_gui:
         from .gui import GkmsApp
         from .glass_gui.launcher import main

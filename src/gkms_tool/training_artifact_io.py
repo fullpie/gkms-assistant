@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -25,6 +26,28 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def replace_flushed_file(source, target, timeout: float = 2.0) -> None:
+    """Retry only Windows sharing failures for the same already-flushed file.
+
+    Serialization and flushing belong to the caller. This retries only rename;
+    it never recreates bytes, retries an operation, or removes retained state.
+    """
+    if type(timeout) not in (int, float) or not 0 <= timeout <= 2.0:
+        raise ValueError('Replacement retry timeout must be between 0 and 2 seconds')
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            os.replace(source, target)
+            return
+        except OSError as error:
+            if os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 33):
+                raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise
+            time.sleep(min(0.02, remaining))
 
 
 def atomic_write(path: Path, payload: bytes) -> None:

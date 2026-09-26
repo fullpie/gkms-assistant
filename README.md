@@ -1,51 +1,41 @@
-# GKMS Assistant
+# GKMS Assistant 0.2.0
 
 **繁體中文** · [English](README.en.md) · [日本語](README.ja.md)
 
-《學園偶像大師》（学園アイドルマスター）的 **Windows 自動培育助手**。透過簡潔的 GUI 選擇偶像、模式與連續場數，使用模型執行培育並查看進度。
-
-**目前版本：0.1.1** · **[下載最新版本](https://github.com/fullpie/gkms-assistant/releases/latest)**
+學園偶像大師 PC 版的自動培育助手。以深度學習模型決定演出出牌、飲料與附屬選擇，透過 DLL 讀取遊戲狀態並執行操作。
 
 <!-- BEGIN GUI SCREENSHOTS -->
-## GUI 截圖
+<details>
+<summary>介面示意</summary>
 
 ![自動培育介面](docs/images/gui-cultivation-zh-Hant.png)
-
-直接開啟本專案原始 GUI 前端，以內建離線示範模式擷取；未載入遊戲連接器，也未連接遊戲。畫面中的進度與分數為示範資料，不代表實測成績。
-
-<details>
-<summary>設定與安裝畫面</summary>
-
 ![設定與安裝畫面](docs/images/gui-setup-zh-Hant.png)
 
+保留的舊版離線示範截圖，數值不是實測結果；0.2 的演出模型已改為共用 RL。
 </details>
 <!-- END GUI SCREENSHOTS -->
 
-## 目前功能
+## 功能
 
-- **自動培育**：N.I.A. Pro／Master、偶像選擇、連續場數與執行狀態。
-- **策略切換**：「主 BC＋附屬策略」與「整合版 BC」兩種模型選擇。
-- **三語介面**：繁體中文、英文、日文，整合必要模組安裝與可選的遊戲翻譯。
+- 自動完成選角、培育、演出、結算與回首頁。
+- 一個共用 RL 模型涵蓋六種流派，以流派、模式及演出階段作為輸入。
+- 支援卡與回憶卡使用現有遊戲推薦／規則編成，可指定鎖定卡片。
+- 顯示目前模型、執行進度與停止原因；整合遊戲啟動、翻譯及操作元件管理。
+- 顯示演出預估分數；目前尚未校準，只作參考。
+- 開啟時檢查助手更新，由使用者決定是否安裝。
 
-> 目前模型的訓練與主要離線驗證集中於「全力」N.I.A. Pro／Master；其他流派雖可選擇，尚未完成同等訓練與驗證。
+本版模型範圍為 N.I.A. Pro／Master；各流派與模式的實機驗證仍有差異，部分附屬決策的訓練資料不足。目前尚未證明穩定優於舊 BC，不保證通關或高分。培育週行動沿用既有策略，演出使用固定 RL 權重，不會在遊玩中自行訓練或換版。舊 BC 已停用選取。
 
-## 開始使用
+## 使用
 
-**需求：** Windows x64、Microsoft Edge WebView2 Runtime、.NET Framework 4.7.2 以上。
+1. 從 [Releases](https://github.com/fullpie/gkms-assistant/releases) 下載 Windows 版，完整解壓縮。
+2. 執行 `GKMS-Assistant.exe`，依介面設定遊戲位置並安裝所需元件。
+3. 選擇角色、模式與場數，確認編成後開始。
 
-1. 前往 [Releases](https://github.com/fullpie/gkms-assistant/releases/latest)，下載完整使用者包 `gkms-assistant-0.1.1-windows-x64.zip`，不要選 GUI 更新包或原始碼包。
-2. 完整解壓縮後，執行 `GKMS-Assistant.exe`。
-3. 在設定中選擇遊戲資料夾並安裝必要的操控模組，再開始培育；遊戲翻譯可自行選擇是否安裝。
+介面使用獨立 Windows 視窗，需要 Microsoft Edge WebView2 Runtime。首次啟動或維護遊戲可能要求系統管理員權限；助手平常以一般權限執行。更新後若無法開啟，可使用包內的「恢復 GUI.cmd」。請保留整個資料夾，勿單獨搬移 EXE。
 
-## 未來目標
+## 範圍與資料
 
-- **強化學習（RL）**：導入 RL 訓練，改善培育決策與得分表現。
-- **全模式支援**：逐步擴展至所有培育模式與流派，補齊各模式的策略與驗證。
+公開版不包含私人研究介面、訓練回放、帳號資料或測試 DLL。私人版的原生模擬編成搜尋不包含在本版。模型與推論依賴隨發布包提供，使用者不必安裝 Python 或具備 NVIDIA 顯示卡。
 
-以上為開發目標，不代表 0.1 已支援。
-
-## 開發與授權
-
-[開發與打包說明](docs/development.md) · [授權說明](NOTICE.txt)
-
-原創部分保留所有權利，未額外授予開源授權；第三方元件維持各自授權。
+原創部分保留所有權利；第三方元件依各自授權提供。開發者建置資訊見 [公開版打包說明](docs/public-gui-packaging.md)。
