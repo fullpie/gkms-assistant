@@ -45,3 +45,11 @@ def observe_native_return(*, require_settled: bool):
             return value
         return call
     return decorate
+
+
+def observe_outer_snapshot(snapshot, *, run_id):
+    """Presentation hook on the existing read; never invokes the gateway."""
+    journal = _journal.get()
+    observe = getattr(journal, 'observe_native_outer', None)
+    if callable(observe):
+        observe_safely(journal, observe, snapshot, run_id=run_id)

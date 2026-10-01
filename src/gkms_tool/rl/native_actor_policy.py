@@ -49,7 +49,7 @@ def _stamp(path):
 
 
 def prepare_actor_projector(sources, *, runtime_loader_compatibility=None,
-                            runtime_io_equivalence=None, max_entities=256):
+                            runtime_io_equivalence=None, max_entities=256,lazy_materials=False):
     """Verify a locator or reviewed additive-I/O bridge without relabeling training.
 
     ExpertSemanticProjector keeps its actual runtime identity. The separately
@@ -63,6 +63,11 @@ def prepare_actor_projector(sources, *, runtime_loader_compatibility=None,
         raise ContractError("original three semantic source references required")
     runtime_sources = deepcopy(sources)
     relocation = None
+    def construct(factory):
+        if lazy_materials:
+            from devtools.rl.actor_materials import construct_lazy_projector
+            return construct_lazy_projector(factory,runtime_sources,max_entities=max_entities)
+        return factory(runtime_sources,max_entities=max_entities)
     if runtime_io_equivalence is not None and runtime_loader_compatibility is not None:
         raise ContractError("Choose one explicit runtime source bridge")
     if runtime_io_equivalence is not None:
@@ -78,7 +83,7 @@ def prepare_actor_projector(sources, *, runtime_loader_compatibility=None,
             raise ContractError("Runtime I/O proof belongs to another original projection loader")
         _check_reference(original)
         runtime_sources["loader_compatibility"] = deepcopy(runtime_io_equivalence)
-        projector = IOEquivalentExpertProjector(runtime_sources, max_entities=max_entities)
+        projector = construct(IOEquivalentExpertProjector)
         relocation = {"original_receipt": deepcopy(original), "runtime_receipt": deepcopy(runtime_io_equivalence),
             "kind": "reviewed-additive-IO-equivalence", "original_numeric_functions_unchanged": True}
     if runtime_loader_compatibility is not None:
@@ -104,7 +109,7 @@ def prepare_actor_projector(sources, *, runtime_loader_compatibility=None,
         relocation = {"original_receipt": deepcopy(sources["loader_compatibility"]),
             "runtime_receipt": deepcopy(runtime_loader_compatibility), "only_source_and_helper_paths_changed": True}
     if runtime_io_equivalence is None:
-        projector = ExpertSemanticProjector(runtime_sources, max_entities=max_entities)
+        projector = construct(ExpertSemanticProjector)
     directory = Path(expert_projection.__file__).resolve().parent
     implementation = {name: sha256_file(directory / name) for name in
         ("expert_projection.py", "game_projection.py", "native_information_view.py", "semantic_entity_encoding.py")}
@@ -115,7 +120,7 @@ def prepare_actor_projector(sources, *, runtime_loader_compatibility=None,
     return projector, training_identity, relocation
 
 
-def load_actor_checkpoint(checkpoint, *, dataset_identity, training_source_code):
+def load_actor_checkpoint(checkpoint, *, dataset_identity, training_source_code, observed_source_code=None):
     """Load only final actor weights from a pinned safe training checkpoint."""
     sha256(dataset_identity, "trained dataset identity")
     if type(training_source_code) is not dict or set(training_source_code) != SOURCE_NAMES:
@@ -148,16 +153,49 @@ def load_actor_checkpoint(checkpoint, *, dataset_identity, training_source_code)
         raise ContractError("checkpoint update counts do not complete the original schedule")
     metadata = validate_actor_metadata(saved.get("model_metadata")).unpack()
     schema = FeatureSchema.from_dict(saved.get("feature_schema", {}))
-    if (schema.identity != metadata["feature_schema_sha256"]
+    observed=metadata['model_kind']=='gkms.rl.shared-observed-outer-policy.v2'
+    expected_schema=metadata.get('original_exam_schema_sha256',metadata['feature_schema_sha256'])
+    if (schema.identity != expected_schema
             or schema != feature_schema(max_entities=schema.max_entities)
             or metadata["candidate_dim"] != len(ENTITY_FEATURE_NAMES)):
         raise ContractError("checkpoint schema/candidate codec differs from shared projection")
     bindings = saved.get("source_bindings")
     if type(bindings) is not dict or not bindings or any(digest(value) != key for key, value in bindings.items()):
         raise ContractError("checkpoint original source binding identities differ")
-    with torch.random.fork_rng(devices=[]):
-        model = offline_policy.OfflinePolicyNet(schema, networks.NetworkConfig(**metadata["network"]),
-            candidate_dim=metadata["candidate_dim"])
+    if observed:
+        import importlib
+        from .observed_outer_policy import (ObservedOuterPolicyNet,observed_source_module_names,
+            observed_inference_module_names)
+        expected_observed=saved.get('observed_outer',{}).get('implementation')
+        include_fine=isinstance(expected_observed,dict)and 'gkms_tool.rl.observed_outer_fine_projection'in expected_observed
+        if include_fine:
+            adapter=observed_source_code.get('gkms_tool.rl.observed_outer_fine_projection')if isinstance(observed_source_code,dict)else None
+            if not adapter:raise ContractError('Fine inference dependency list needs its pinned adapter')
+            _check_reference(adapter)
+            import importlib.util
+            origin=importlib.util.find_spec('gkms_tool.rl.observed_outer_fine_projection').origin
+            if sha256_file(Path(origin))!=adapter['sha256']:raise ContractError('Fine source declaration differs before import')
+        required_observed=set(observed_source_module_names(include_fine=include_fine))
+        inference_modules=observed_inference_module_names(include_fine=include_fine)
+        if (not isinstance(observed_source_code,dict)or not isinstance(expected_observed,dict)
+                or set(observed_source_code)!=required_observed
+                or {name:ref.get('sha256')for name,ref in observed_source_code.items()}!=expected_observed):
+            raise ContractError('Complete explicit observed actor implementation inventory required')
+        for name,ref in observed_source_code.items():
+            _check_reference(ref)
+            if name in inference_modules and sha256_file(Path(importlib.import_module(name).__file__))!=ref['sha256']:
+                raise ContractError('Observed actor imported implementation differs: '+name)
+        with torch.random.fork_rng(devices=[]):
+            model=ObservedOuterPolicyNet(schema,networks.NetworkConfig(**metadata['network']),candidate_dim=metadata['candidate_dim'])
+        if (saved.get('model_feature_schema')!=asdict(model.schema)or model.checkpoint_metadata()!=metadata
+                or saved['observed_outer'].get('objective_id')!=model.checkpoint_metadata()['outer_objective']['id']):
+            raise ContractError('Observed actor expanded schema/head metadata differs')
+    else:
+        if observed_source_code is not None or saved.get('observed_outer')is not None:
+            raise ContractError('Original v1 actor must not borrow an observed-model source inventory')
+        with torch.random.fork_rng(devices=[]):
+            model = offline_policy.OfflinePolicyNet(schema, networks.NetworkConfig(**metadata["network"]),
+                candidate_dim=metadata["candidate_dim"])
     expected = model.state_dict(); weights = saved.get("model")
     if (not isinstance(weights, dict) or set(weights) != set(expected)
             or any(not isinstance(weights[name], torch.Tensor) or weights[name].shape != value.shape
@@ -167,7 +205,8 @@ def load_actor_checkpoint(checkpoint, *, dataset_identity, training_source_code)
     model.load_state_dict(weights, strict=True)
     model.eval().requires_grad_(False)
     return model, {"feature_schema": schema, "model_metadata": metadata, "source_bindings": deepcopy(bindings),
-        "dataset_identity": dataset_identity, "checkpoint_step": saved["step"], "source_code": expected_code}
+        "dataset_identity": dataset_identity, "checkpoint_step": saved["step"], "source_code": expected_code,
+        **({'model_feature_schema':model.schema,'observed_source_code':deepcopy(observed_source_code)}if observed else{})}
 
 
 def build_actor_batch(state, candidates, constraints, schema):
@@ -214,7 +253,7 @@ class SharedNativeActorPolicy:
     def __init__(self, specification, *, engine_identity):
         required = {"checkpoint", "dataset_identity", "semantic_sources", "training_source_code", "device"}
         if (type(specification) is not dict or not required <= set(specification)
-                or set(specification) - required - {"runtime_loader_compatibility", "runtime_io_equivalence", "runtime_master_source", "projection_equivalence"}
+                or set(specification) - required - {"runtime_loader_compatibility", "runtime_io_equivalence", "runtime_master_source", "projection_equivalence", "observed_source_code"}
                 or specification["device"] != "cpu"):
             raise ContractError("explicit CPU shared actor specification required")
         self.specification = FrozenJSON.of(specification)
@@ -222,11 +261,13 @@ class SharedNativeActorPolicy:
         if self.source.execution_master_policy != "source-exact" or self.source.master != self.source.source_master:
             raise ContractError("shared actor first evaluation requires original source-exact Master")
         self.model, self.metadata = load_actor_checkpoint(specification["checkpoint"],
-            dataset_identity=specification["dataset_identity"], training_source_code=specification["training_source_code"])
+            dataset_identity=specification["dataset_identity"], training_source_code=specification["training_source_code"],
+            **({'observed_source_code':specification['observed_source_code']}if 'observed_source_code'in specification else{}))
         self.projector, self.training_projection_id, self.loader_relocation = prepare_actor_projector(
             specification["semantic_sources"], runtime_loader_compatibility=specification.get("runtime_loader_compatibility"),
             runtime_io_equivalence=specification.get("runtime_io_equivalence"),
-            max_entities=self.metadata["feature_schema"].max_entities)
+            max_entities=self.metadata["feature_schema"].max_entities,
+            lazy_materials=bool(specification.get('runtime_io_equivalence')))
         if self.projector.schema != self.metadata["feature_schema"]:
             raise ContractError("owned native projection differs from trained feature schema")
         self.runtime_base_projection_id = self.training_projection_id
@@ -261,8 +302,9 @@ class SharedNativeActorPolicy:
             self.runtime_encoder = RuntimeMasterFeatureEncoder(
                 specification["semantic_sources"]["contract_set"],
                 specification["semantic_sources"]["original_shared_encoder"], runtime_source=runtime_source,
-                source_resolver=self.projector.compatibility.make_source_resolver(),
-                loader_compatibility=self.projector.compatibility)
+                source_resolver=(getattr(self.projector,'material_source_resolver',None)
+                    or self.projector.compatibility.make_source_resolver()),
+                loader_compatibility=self.projector.compatibility,historical_encoder=self.projector.encoder)
         routing = self.runtime_encoder or self.projector.encoder
         base, self.contract = routing._route(self.source.master, self.source.produce)
         self.features = RuntimeOptionalParentCardFeatures(base.package,
@@ -273,6 +315,7 @@ class SharedNativeActorPolicy:
             raise ContractError("semantic package differs from owned native engine")
         refs = [specification["checkpoint"], *specification["training_source_code"].values(),
                 *specification["semantic_sources"].values()]
+        refs.extend(specification.get('observed_source_code',{}).values())
         if specification.get("runtime_loader_compatibility") is not None:
             refs.append(specification["runtime_loader_compatibility"])
         if specification.get("runtime_io_equivalence") is not None:
@@ -281,6 +324,7 @@ class SharedNativeActorPolicy:
             refs.append(specification["runtime_master_source"])
         if specification.get("projection_equivalence") is not None:
             refs.append(specification["projection_equivalence"])
+        refs.extend(getattr(self.projector,'allocation_execution',{}).get('sources',()))
         self._watches = (*tuple((path, _stamp(path)) for path in (_check_reference(ref) for ref in refs)), *equivalence_watches)
 
     def _guard(self, observation, kind):
@@ -338,6 +382,8 @@ class SharedNativeActorPolicy:
             "checkpoint_step": self.metadata["checkpoint_step"], "feature_schema_sha256": self.projector.schema.identity,
             "projection_id": self.training_projection_id, "runtime_projection_id": self.projector.identity,
             "runtime_base_projection_id": getattr(self, "runtime_base_projection_id", self.training_projection_id),
+            "runtime_material_reuse":self.runtime_encoder.historical_material_reuse if self.runtime_encoder is not None else None,
+            "allocation_execution":deepcopy(getattr(self.projector,'allocation_execution',None)),
             "projection_equivalence": deepcopy(getattr(self, "projection_equivalence_reference", None)),
             "loader_locator_relocation": deepcopy(self.loader_relocation), "source_master_hash": self.source.master,
             "trained_source_binding_sha256": self.training_source_binding.sha256, "decision_type": checked.kind,

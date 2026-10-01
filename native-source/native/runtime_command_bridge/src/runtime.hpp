@@ -26,6 +26,7 @@ public:
     void* nested_class(void* klass, const char* name);
     void* method(void* klass, const char* name, int arity, std::uint32_t token = 0);
     json method_parameter_contract(void* method);
+    json method_result_contract(void* method);
     void* invoke(void* method, void* instance, std::initializer_list<void*> args = {});
     void* getter(void* object, const char* name);
     void* new_object(void* klass);

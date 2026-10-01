@@ -10,6 +10,49 @@ void same_source(const json& command,const json& action,const std::string& kind)
         throw std::runtime_error("selector source drink differs from its parent");
 }
 }
+void validate_error_return_target(const json& request,const json& snapshot){
+    const auto& target=request.at("target");
+    if(request.value("command",std::string())!="outer.action"||
+       target.value("action_id",std::string())!="error.return_title"||
+       snapshot.value("schema",std::string())!="gkms.outer-runtime-snapshot.v1"||
+       snapshot.value("surface",std::string())!="error"||snapshot.value("screen_type",std::string())!="ErrorSheetPresenter"||
+       !snapshot.contains("busy")||snapshot.at("busy")!=false||snapshot.value("actions_complete",false)!=true||
+       snapshot.at("ui_state").at("closing")!=false||request.at("expected_revision")!=snapshot.at("revision"))
+        throw std::runtime_error("return-title requires the current ready native error sheet");
+    for(const auto* key:{"sheet_instance_id","prompt_digest","button_source","button_instance_id","callback_instance_id"})
+        if(!target.contains(key)||!identity(target.at(key)))throw std::runtime_error("return-title target identity incomplete");
+    if((target.at("button_source")!="cancel"&&target.at("button_source")!="execute")||
+       target.at("sheet_instance_id")!=snapshot.at("screen_instance_id")||
+       target.at("prompt_digest")!=snapshot.at("ui_state").at("error").at("digest"))
+        throw std::runtime_error("return-title foreground identity differs");
+    const auto& actions=snapshot.at("legal_actions");
+    if(!actions.is_array()||actions.size()!=1||actions[0].value("action_id",std::string())!="error.return_title"||actions[0].at("target")!=target)
+        throw std::runtime_error("return-title requires one exact native callback target");
+}
+void validate_error_return_continuation(const json& request,const json& snapshot,const json& parent,const std::string& generation){
+    validate_error_return_target(request,snapshot);
+    const auto parent_id=request.at("continuation_of").get<std::string>();
+    const auto status=parent.value("status",std::string());
+    if(parent_id==request.at("request_id").get<std::string>()||request.value("session_generation",std::string())!=generation||
+       parent.value("schema",std::string())!="gkms.runtime-command-result.v1"||parent.value("request_id",std::string())!=parent_id||
+       parent.value("session_generation",std::string())!=generation||(status!="submitted"&&status!="unknown")||
+       (parent.contains("settled")&&parent.at("settled")!=false)||parent.contains("continuation_of"))
+        throw std::runtime_error("return-title parent is not an unresolved dispatched command in this session");
+    // New receipts bind the command even when invocation throws before action
+    // metadata is written. Old submitted Exam/Outer receipts remain usable;
+    // an old unknown/loadout receipt without native command evidence fails closed.
+    const auto action=parent.value("action",json::object());
+    const auto kind=parent.value("command",action.value("command",std::string()));
+    if((kind!="outer.action"&&kind!="loadout.apply"&&kind!="exam.play"&&kind!="exam.drink"&&kind!="exam.end_turn")||
+       (action.contains("command")&&action.at("command")!=kind)||
+       (status=="unknown"&&parent.value("error_code",std::string())!=
+         (kind=="loadout.apply"?"loadout-readback-unproven":"native-invocation-outcome-unknown")))
+        throw std::runtime_error("return-title parent native dispatch evidence is incomplete");
+}
+void reject_mutation_behind_error(const std::string& command,const json& error_snapshot){
+    if(!error_snapshot.is_null()&&(command.starts_with("exam.")||command=="loadout.apply"))
+        throw std::runtime_error("foreground native error must be handled before ordinary input");
+}
 json latest_manual_main_command(const json& observed_logs){
     if(!observed_logs.is_array())throw std::runtime_error("native manual log list unavailable");
     json latest=nullptr;std::map<std::string,std::size_t> occurrences;std::size_t count=0;

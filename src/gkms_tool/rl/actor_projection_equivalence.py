@@ -40,6 +40,19 @@ def read_projection_equivalence(reference):
                 raise ContractError('Continuation checkpoint differs from reused input proof')
             import torch
             saved=torch.load(checkpoint_path,map_location='cpu',weights_only=True)
+            metadata=saved.get('model_metadata',{})
+            exam_schema=metadata.get('feature_schema_sha256')
+            if metadata.get('model_kind')=='gkms.rl.shared-observed-outer-policy.v2':
+                from .actor_handoff import validate_actor_metadata
+                from .features import FeatureSchema
+                from .observed_outer_projection import extend_schema
+                metadata=validate_actor_metadata(metadata).unpack()
+                original=FeatureSchema.from_dict(saved.get('feature_schema',{}))
+                expanded=FeatureSchema.from_dict(saved.get('model_feature_schema',{}))
+                exam_schema=metadata['original_exam_schema_sha256']
+                if (original.identity!=exam_schema or expanded!=extend_schema(original)
+                        or expanded.identity!=metadata['feature_schema_sha256']):
+                    raise ContractError('Continuation changed the proved original exam schema')
             expected={'feature_schema_sha256':parent['feature_schema_sha256'],
                 'source_master_hash':parent['source_master_hash'],
                 'runtime_base_projection_id':parent['runtime_base_projection_id'],
@@ -47,7 +60,7 @@ def read_projection_equivalence(reference):
             if (any(receipt.get(key)!=value for key,value in expected.items())
                     or receipt.get('new_parity_tests_performed') is not False
                     or saved.get('phase')!='complete' or saved.get('dataset_identity')!=receipt.get('dataset_identity')
-                    or saved.get('model_metadata',{}).get('feature_schema_sha256')!=parent['feature_schema_sha256']
+                    or exam_schema!=parent['feature_schema_sha256']
                     or saved.get('source_bindings',{}).get(digest(parent['trained_source_binding']))!=parent['trained_source_binding']):
                 raise ContractError('Continuation changed the proved feature/source contract')
             # Parity is about the exact model INPUTS, not weight values or the

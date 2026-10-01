@@ -39,21 +39,14 @@ def _nonempty(value, label):
     return value
 
 
-def choose_runtime_drink_inventory_action(
-    native, *, deck_context: Callable[[], Mapping[str, Any]] | Mapping[str, Any],
-    database: Path = DEFAULT_DATABASE,
-) -> tuple[Mapping[str, Any] | None, Mapping[str, Any]]:
-    """Return one unchanged native target; never click or mutate the snapshot.
-
-    The model's selected tuples identify drinks to KEEP. Portfolio indexes use
-    owned slots followed by new slots, so duplicate IDs remain distinct.
-    """
+def validate_runtime_drink_inventory(native):
+    """Validate the unchanged native slot/owner contract without ranking."""
     raw = native.raw if hasattr(native, "raw") else native
     if not isinstance(raw, Mapping):
         raise RuntimeDrinkChoiceError("native drink snapshot is not an object")
     state = raw.get("ui_state")
     if not isinstance(state, Mapping) or state.get("family") != "drink_inventory":
-        return None, {"source": "native-drink-portfolio", "status": "not-applicable"}
+        return None
     if raw.get("busy") is not False or raw.get("actions_complete") is not True or state.get("data_ready") is not True:
         raise RuntimeDrinkChoiceError("native drink inventory is not ready")
     phase = state.get("phase")
@@ -142,6 +135,25 @@ def choose_runtime_drink_inventory_action(
     collections = raw.get("collections")
     if not isinstance(collections, Mapping) or "cards" not in collections:
         raise RuntimeDrinkChoiceError("complete native collections.cards required for drink portfolio")
+    return dict(raw=raw, state=state, phase=phase, limit=limit, owned=owned, added=added,
+                pool=pool, selected=selected, fingerprint=fingerprint, actions=actions, collections=collections)
+
+
+def choose_runtime_drink_inventory_action(
+    native, *, deck_context: Callable[[], Mapping[str, Any]] | Mapping[str, Any],
+    database: Path = DEFAULT_DATABASE,
+) -> tuple[Mapping[str, Any] | None, Mapping[str, Any]]:
+    """Return one unchanged native target; never click or mutate the snapshot.
+
+    The model's selected tuples identify drinks to KEEP. Portfolio indexes use
+    owned slots followed by new slots, so duplicate IDs remain distinct.
+    """
+    checked = validate_runtime_drink_inventory(native)
+    if checked is None:
+        return None, {"source": "native-drink-portfolio", "status": "not-applicable"}
+    raw, phase, limit = (checked[key] for key in ("raw", "phase", "limit"))
+    owned, added, pool = (checked[key] for key in ("owned", "added", "pool"))
+    selected, fingerprint, actions, collections = (checked[key] for key in ("selected", "fingerprint", "actions", "collections"))
     context = context_from_native(raw)
     supplied = deck_context() if callable(deck_context) else deck_context
     if not isinstance(supplied, Mapping):

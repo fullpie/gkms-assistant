@@ -7,12 +7,14 @@ is inherited without alteration.
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 
 from . import shared_bc_features as shared
 from .integrated_exam_bc_features import IntegratedExamFeatureEncoder
 from .native_structure_contract_set import _common
 from .native_structure_features import NativeStructureCardSemanticFeatures, native_structure_contract
+from .native_structure_features import _reference as verified_structure_reference
 from .runtime_optional_parent_features import RuntimeOptionalParentCardFeatures
 from .observed_empty_collections import empty_collection_contract
 from .training_artifact_io import canonical_json_bytes, sha256_file
@@ -38,13 +40,20 @@ def _compatible_representation(contract, trained_common, kernel_bridge):
 
 class RuntimeMasterFeatureEncoder(IntegratedExamFeatureEncoder):
     def __init__(self, contract_set_reference, original_shared_reference, *, runtime_source,
-                 source_resolver=None, loader_compatibility=None):
+                 source_resolver=None, loader_compatibility=None, historical_encoder=None):
         from .runtime_master_source import RuntimeMasterSource
         if type(runtime_source) is not RuntimeMasterSource:
             raise ValueError("An independently verified runtime Master authority is required")
         runtime_source.validate_unchanged()
-        super().__init__(contract_set_reference, original_shared_reference,
-                         source_resolver=source_resolver, loader_compatibility=loader_compatibility)
+        self._historical_source_watches=()
+        self._historical_source_resolver=source_resolver
+        self._historical_material_reuse=None
+        if historical_encoder is None:
+            super().__init__(contract_set_reference, original_shared_reference,
+                             source_resolver=source_resolver, loader_compatibility=loader_compatibility)
+        else:
+            self._reuse_historical_material(historical_encoder,contract_set_reference,original_shared_reference,
+                source_resolver=source_resolver,loader_compatibility=loader_compatibility)
         self._runtime_source = runtime_source
         if runtime_source.master_hash in {row["source_master_hash"] for row in self._contract_set["routes"]}:
             raise ValueError("A new runtime Master must not replace a historical training route")
@@ -76,6 +85,81 @@ class RuntimeMasterFeatureEncoder(IntegratedExamFeatureEncoder):
         self._route_stamp = stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
         self.validate_runtime_source()
 
+    def _reuse_historical_material(self,encoder,contract_set_reference,original_shared_reference,*,
+                                   source_resolver,loader_compatibility):
+        """Reuse sealed data only; each route/feature wrapper keeps its own state."""
+        if type(encoder) is not IntegratedExamFeatureEncoder or loader_compatibility is None:
+            raise ValueError('Historical reuse requires the verified original encoder and loader authority')
+        expected={'contract_set':deepcopy(dict(contract_set_reference)),
+                  'original_shared_encoder':deepcopy(dict(original_shared_reference))}
+        if encoder._input_references!=expected:
+            raise ValueError('Historical encoder input identities differ')
+        loader_compatibility.validate_unchanged()
+        loader_compatibility.validate_runtime_contract(encoder.contract)
+        if set(encoder._features)!=set(encoder._contract_set['contracts']):
+            raise ValueError('Historical encoder material coverage differs')
+        references=[*expected.values(),*encoder._provenance['encoder_sources'].values()]
+        features={}
+        deferred=not isinstance(encoder._features,dict)
+        if deferred:
+            from devtools.rl.lazy_feature_materials import _LazyFeatures
+            if type(encoder._features) is not _LazyFeatures:
+                raise ValueError('Unrecognized deferred historical allocation authority')
+            mapping=encoder._features
+            for key,recipe in mapping._recipes.items():
+                route=encoder._contract_set['contracts'][key]
+                native=route['native_structure_contract']
+                expected_arguments={name:native[name] for name in ('source_master_hash',
+                    'source_inventory_reference','native_schema_reference','catalog_reference','snapshot_reference')}
+                if (recipe.package.master!=native['source_master_hash'] or
+                        recipe.package.arguments!=expected_arguments or
+                        recipe.package.source_resolver is not source_resolver or
+                        recipe.active_status_contract!=route.get('observed_active_status_contract')):
+                    raise ValueError('Deferred historical recipe differs from its checked route')
+            recipes={key:replace(value,package=replace(value.package,arguments=deepcopy(value.package.arguments)),
+                active_status_contract=deepcopy(value.active_status_contract)) for key,value in mapping._recipes.items()}
+            features=_LazyFeatures(recipes,mapping.cache,mapping._package_loader,mapping._feature_constructor)
+        for key,feature in (() if deferred else encoder._features.items()):
+            if type(feature) is not NativeStructureCardSemanticFeatures:
+                raise ValueError('Historical reuse accepts only immutable source package features')
+            package=feature.package;contract=native_structure_contract(package)
+            if contract!=encoder._contract_set['contracts'][key]['native_structure_contract']:
+                raise ValueError('Historical immutable package identity differs from its route')
+            references.extend(contract[name] for name in ('source_inventory_reference','native_schema_reference',
+                'catalog_reference','snapshot_reference','source_archive_manifest_reference'))
+            references.extend(contract['supplemental_table_references'].values())
+            references.extend(package.native_schema[name] for name in ('proof','grow_enum','source_image','source_metadata'))
+            features[key]=NativeStructureCardSemanticFeatures(package,active_status_contract=feature.active_status_contract)
+        watches={}
+        for reference in references:
+            identity=(reference['path'],reference['sha256'])
+            if identity in watches:continue
+            physical=(source_resolver.resolve(reference).physical_path if source_resolver is not None
+                      else Path(reference['path']).resolve())
+            before=physical.stat();before_stamp=(before.st_size,before.st_mtime_ns,before.st_ctime_ns)
+            path,_=verified_structure_reference(reference,source_resolver=source_resolver)
+            stat=path.stat();stamp=(stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
+            if path!=physical or stamp!=before_stamp:
+                raise ValueError('Historical source changed during material verification')
+            watches[identity]=(path,stamp)
+        for field in ('_input_references','_contract_set','_bridge','_layout','_provenance','_contract'):
+            setattr(self,field,deepcopy(getattr(encoder,field)))
+        self._features=features
+        self._historical_source_watches=tuple(watches.values())
+        self._historical_material_reuse={'schema':'gkms.immutable-historical-encoder-reuse.v1',
+            'package_count':len(features),'verified_source_count':len(watches),
+            'historical_materialization':'checked-on-first-route' if deferred else 'already-verified-immutable-packages',
+            'immutable_packages_shared':True,'feature_adapters_shared':deferred,'owner_state_shared':False,
+            'sharing_scope':'single-actor-projector-runtime',
+            'numerical_contract_sha256':self._contract['contract_sha256'],
+            'numerical_sources':deepcopy(self._provenance['encoder_sources']),
+            'allocation_implementation':{'path':str(Path(__file__).resolve()),'sha256':sha256_file(Path(__file__))}}
+
+    @property
+    def historical_material_reuse(self):
+        self.validate_runtime_source()
+        return deepcopy(self._historical_material_reuse)
+
     @property
     def runtime_master_version(self):
         return self._runtime_source.execution_master_version
@@ -85,6 +169,12 @@ class RuntimeMasterFeatureEncoder(IntegratedExamFeatureEncoder):
         return self._runtime_source.master_hash
 
     def validate_runtime_source(self):
+        for path,stamp in self._historical_source_watches:
+            stat=path.stat()
+            if (stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)!=stamp:
+                raise ValueError('Reused historical source changed during execution')
+        if self._historical_source_resolver is not None:
+            self._historical_source_resolver.validate_unchanged()
         self._runtime_source.validate_unchanged()
         self._runtime_features.validate_definition_extension()
         stat = self._route_source.stat()

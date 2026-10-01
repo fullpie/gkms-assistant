@@ -212,7 +212,7 @@ def validate_quiescent_snapshot(raw, active, expected_run_id):
                 or not raw.get("screen_instance_id")
                 or not isinstance(raw.get("pointer_blocking"), dict)
                 or raw["pointer_blocking"].get("input_ready") is not True
-                or raw.get("blockers") not in ([], None) or not raw.get("legal_actions")
+                or raw.get("blockers") not in ([], None) or not isinstance(raw.get("legal_actions"), list)
                 or memory.get("phase") in {"awaiting_confirm", "running"}
                 or memory.get("task_status") == "Pending"
                 or (memory.get("operation_serial", 0) and memory.get("task_consumed") is not True)):
@@ -416,6 +416,10 @@ def execute_job(command, payload, job_dir, runner, script_hashes, *, public_exec
         action = {"operation": command, "workspace": str(ROOT), "job_directory": str(job_dir),
             "installed_sha256": payload["expected_installed_sha256"], "expected_pid": payload.get("expected_game_pid"),
             "candidate_sha256": payload.get("candidate_sha256"), "candidate_path": str(staged) if staged else None}
+        if public_executor is not None:
+            # Derived from the server's checked durable state, never accepted
+            # as a caller-supplied override of a preserved run or pending input.
+            action["first_start_no_active_run"] = command == "start-game" and active is None
         action_path = job_dir / "operation.json"
         write_json(action_path, action)
         if public_executor is not None:
@@ -462,6 +466,15 @@ def execute_job(command, payload, job_dir, runner, script_hashes, *, public_exec
                 if snapshot.session_generation != status["session_generation"]:
                     continue
                 if public_launch is not None:
+                    after_status = client.read_status()
+                    if (after_status.get("pid") != status.get("pid")
+                            or after_status.get("session_generation") != status.get("session_generation")):
+                        raise ValueError("Native process or generation changed during launch verification")
+                    check_pending()
+                    if load_active_run() != active:
+                        raise ValueError("Active run changed during launch verification")
+                    if sha256(installed) != payload.get("candidate_sha256", payload["expected_installed_sha256"]):
+                        raise ValueError("Installed DLL changed during launch verification")
                     launch_binding = public_executor.validate_native_launch(job_dir, public_launch, status["pid"],
                         previous=launch_binding)
                     public_executor.record_verified_launch(job_dir, public_launch, launch_binding)

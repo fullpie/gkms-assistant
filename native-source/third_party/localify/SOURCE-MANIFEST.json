@@ -4,7 +4,7 @@
     "url": "https://git.natsume.io/Mirror/gkms-localify-dmm.git",
     "commit": "098a41459e17b130be02353f26d0ab0a2ccad914"
   },
-  "staged_receipt_sha256": "d16d3cbadab142c46dcf30643e8a84ac0d1732a3aa0cbccaa1a2c5014633789e",
+  "staged_receipt_sha256": "b5a90311bc9d3abf3e15d8f04c9c6d0fbd88a1fee138630b2e9db5af9ed4f5bb",
   "retained_audited_source_pins": {
     "src/GakumasLocalify/Hook.cpp": "fd38c48854c8b9877a1d7312a13f4d09546e6af29a34429458ce59338b821b43",
     "src/dllproxy/proxy.cpp": "f894d12552784b32baef4e3b5d5267407db46ebff9e70757b6b8ff31b4f51aed",
@@ -17,7 +17,7 @@
     "src/dllproxy/proxy.cpp": "f894d12552784b32baef4e3b5d5267407db46ebff9e70757b6b8ff31b4f51aed",
     "src/gkmsTelemetryBootstrap.cpp": "91c77e8bba9a89323bea72643ce81023f68accd6185764787f6b99d0def8be50",
     "src/runtime_command_bridge_loader.cpp": "44c604db9b408845c296514d257e61f064af933dc6bf6323e32b678221a6aa30",
-    "src/public_runtime_paths.hpp": "a43d855339f6e22171424f1ff4b928cd4dacfc9b962be467a2bc0184f765ca59",
+    "src/public_runtime_paths.hpp": "ec04ec32cde9d1625d7ff4e05362b936d1cf6161f21876ec523ed8817127154b",
     "src/main.cpp": "59236d8e704d5f37854c5e56ab92d80dfec789f222f1629bf38343b20e95155b"
   },
   "source_transformations": [
@@ -30,8 +30,8 @@
     },
     {
       "path": "src/public_runtime_paths.hpp",
-      "staged_sha256": "a43d855339f6e22171424f1ff4b928cd4dacfc9b962be467a2bc0184f765ca59",
-      "exported_sha256": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+      "staged_sha256": "ec04ec32cde9d1625d7ff4e05362b936d1cf6161f21876ec523ed8817127154b",
+      "exported_sha256": "460d028beb86de362be457ab19ab1037cfe11dab905ad9801d728d3fca7435f4",
       "operation": "select-existing-GKMS_PUBLIC_PORTABLE-branches",
       "public_branch_text_preserved": true
     },
@@ -790,9 +790,9 @@
       "staged_sha256": "0a79ceceb6d07514bab002518364aeb561709101d0bd84d7d8bc505e659ff5d8"
     },
     "src/public_runtime_paths.hpp": {
-      "sha256": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
-      "bytes": 2038,
-      "staged_sha256": "a43d855339f6e22171424f1ff4b928cd4dacfc9b962be467a2bc0184f765ca59"
+      "sha256": "460d028beb86de362be457ab19ab1037cfe11dab905ad9801d728d3fca7435f4",
+      "bytes": 2340,
+      "staged_sha256": "ec04ec32cde9d1625d7ff4e05362b936d1cf6161f21876ec523ed8817127154b"
     },
     "src/resourceUpdate/resourceUpdate.cpp": {
       "sha256": "f3c5ba8e1bb74a61c67fcd2861bead1f429ecc98d90a7aaf5de8880ae5bd0a14",

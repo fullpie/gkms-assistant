@@ -23,6 +23,8 @@
   const client=R.createClient((...args)=>fetch(...args));
   const unresolvedRequests=new Set();
   let developerPanelLoad=null, developerPanelController=null;
+  let initialProjectPageSelected=false;
+  let focusedResearchWorkflow=null;
   let preferenceQueue=Promise.resolve(),preferenceLoad=Promise.resolve(false),localeEdits=0,settingEdits=0;
   try {
     const savedLocale=localStorage.getItem(localeKey);if(languages.includes(savedLocale))locale=savedLocale;
@@ -295,7 +297,7 @@
   function historyPage() {
     const session=sessionData(),rows=session?.rows||[];
     return `<header class="view-heading"><h1>${txt('history')}</h1><p>${txt('historyNote')}</p></header>${demoBanner()}`+
-      `<section class="card session-history" id="sessionHistory"><div class="section-title"><h2>${txt('sessionOnly')}</h2><span class="badge">${rows.length}</span></div><div class="table-wrap"><table><thead><tr>${['resultsTime','resultsCharacter','resultsMode','resultsStatus','resultsScore'].map(k=>`<th>${txt(k)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr><td>${escape(formatDate(row.ended_at||row.started_at))}</td><td>${escape(row.character||'—')}</td><td>${escape(row.mode||'—')}</td><td><span class="result-status ${row.status==='completed'?'completed':'interrupted'}">${txt(row.status==='completed'?'resultCompleted':'resultInterrupted')}</span></td><td class="result-score" title="${txt('scoreTooltip')}">${Number.isFinite(row.score)?escape(row.score.toLocaleString(locale)):'—'}</td></tr>`).join(''):`<tr><td colspan="5" class="session-empty"><strong>${txt('noHistory')}</strong><p>${txt('historyEmpty')}</p></td></tr>`}</tbody></table></div><p class="help">${txt('scoreNote')}</p>${session?.recording_ok===false?notice('recordingWarning'):''}</section>`;
+      `<section class="card session-history" id="sessionHistory"><div class="section-title"><h2>${txt('sessionOnly')}</h2><span class="badge">${rows.length}</span></div><div class="table-wrap"><table><thead><tr>${['resultsTime','resultsCharacter','resultsMode','resultsStatus','resultsScore','resultsMemoryGrade'].map(k=>`<th>${txt(k)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr><td>${escape(formatDate(row.ended_at||row.started_at))}</td><td>${escape(row.character||'—')}</td><td>${escape(row.mode||'—')}</td><td><span class="result-status ${row.status==='completed'?'completed':'interrupted'}">${txt(row.status==='completed'?'resultCompleted':'resultInterrupted')}</span></td><td class="result-score" title="${txt('scoreTooltip')}">${Number.isFinite(row.score)?escape(row.score.toLocaleString(locale)):'—'}</td><td class="result-memory-grade" title="${txt('memoryGradeTooltip')}">${escape(row.memory_grade||'—')}</td></tr>`).join(''):`<tr><td colspan="6" class="session-empty"><strong>${txt('noHistory')}</strong><p>${txt('historyEmpty')}</p></td></tr>`}</tbody></table></div><p class="help">${txt('scoreNote')}</p>${session?.recording_ok===false?notice('recordingWarning'):''}</section>`;
   }
 
   function launcherSnapshot() {return state.demo?.launcher||(!state.demo?state.launcherStatus:null);}
@@ -479,7 +481,7 @@
     // while settings remain editable; safety/state transitions still redraw it.
     const editingSelect=document.activeElement?.tagName==='SELECT'&&editingAllowed();
     const changedUpdate=previousUpdate!==JSON.stringify([appIdentity(),appUpdate()?.status,appUpdate()?.release?.release_id,appUpdate()?.restart_required,appUpdate()?.active_version,appUpdate()?.recovery_launch,appUpdate()?.activation_warning]);
-    if((state.exiting||changedUpdate||['cultivate','history','advanced'].includes(state.page))&&!editingSelect)render();
+    if((state.exiting||changedUpdate||unseenResearchRun()||['cultivate','history','advanced'].includes(state.page))&&!editingSelect)render();
     if(!state.exitLost)setTimeout(projectPoll,1200);
   }
 
@@ -633,7 +635,21 @@
       developerPanelLoad.then(()=>render()).catch(()=>{const current=$('developerPanel');if(current)current.textContent='本機開發面板載入失敗，請核對工具套件。';});
     }
   }
+  function unseenResearchRun() {
+    const research=state.project?.developer?.research;
+    return state.project?.developer?.available===true&&research?.owner?.running===true&&
+      typeof research.workflow_id==='string'&&research.workflow_id!==focusedResearchWorkflow&&canNavigate('advanced');
+  }
   function render() {
+    if(unseenResearchRun()){
+      focusedResearchWorkflow=state.project.developer.research.workflow_id;
+      state.page='advanced';
+    }
+    if(!initialProjectPageSelected&&state.project&&canNavigate('advanced')){
+      initialProjectPageSelected=true;
+      const d=state.project.developer;
+      if(d?.available===true&&d.research?.read_only===true&&d.research.external_training)state.page='advanced';
+    }
     if(!canNavigate(state.page))state.page='setup';
     const activeElement=document.activeElement,focusId=activeElement?.id,focusField=activeElement?.dataset?.field,caret=activeElement?.selectionStart;
     const editValue=activeElement?.tagName==='INPUT'?activeElement.value:null;

@@ -9,6 +9,12 @@
 #include "native_trace.hpp"
 #include "public_runtime_paths.hpp"
 #include "continuation.hpp"
+#include "error_adapter.hpp"
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+#include "research_query.hpp"
+#include "pc_core_image_capture.hpp"
+#include "research_query_contract.hpp"
+#endif
 #include <bcrypt.h>
 #include <array>
 #include <atomic>
@@ -45,8 +51,11 @@ json status() {
     // Feature marker for read_snapshot's native_legal_inputs payload; this is
     // not a dispatchable command. Advertise only after Exam initialization.
     auto capabilities=ready ? json::array({"status","read_snapshot","read_inventory","read_model_context","exam.play","exam.drink","exam.end_turn","exam.native_legal_inputs","exam.model_observation.v1"}) : json::array({"status"});
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+    if(pc_version.value("read_only_inspection_allowed",false))capabilities.push_back("read_pc_contracts");
+#endif
     if(loadout_ready){capabilities.push_back("read_loadout");capabilities.push_back("loadout.apply");}
-    if(outer_ready){capabilities.push_back("read_outer_snapshot");capabilities.push_back("outer.action");capabilities.push_back("exam.continuation");}
+    if(outer_ready){capabilities.push_back("read_outer_snapshot");capabilities.push_back("outer.action");capabilities.push_back("exam.continuation");capabilities.push_back("error.return_title.continuation");}
     return {{"schema","gkms.runtime-command-status.v1"},{"protocol_version",1},
         {"pid",GetCurrentProcessId()},{"session_generation",generation},{"ready",ready},
         {"capabilities",capabilities},
@@ -65,7 +74,15 @@ json execute(const json& request) {
         ManagedOperation lifetime(runtime);
         validate_request(request,generation);
         const auto command=request.at("command").get<std::string>();
+        response["command"]=command;
         if(command=="status") {response["bridge_status"]=status();response["status"]="ok";return response;}
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+        if(command=="read_pc_contracts") {
+            if(!pc_version.value("read_only_inspection_allowed",false))throw std::runtime_error("unrecognized PC consumer cannot be inspected");
+            response["pc_contracts"]=inspect_current_pc_contracts(request.at("target"));
+            response["status"]="ok";return response;
+        }
+#endif
         if(!ready) throw std::runtime_error("bridge preflight not ready");
         if(command.starts_with("official_replay."))throw std::runtime_error("official replay core is disabled in this build");
         if(command=="read_diagnostic")throw std::runtime_error("read-only diagnostics disabled in this build");
@@ -80,6 +97,8 @@ json execute(const json& request) {
             if(!outer_ready)throw std::runtime_error("outer observer unavailable");
             response["snapshot"]=read_outer_snapshot(runtime,generation);response["status"]="ok";return response;
         }
+        if(command.starts_with("exam.")||command=="loadout.apply")
+            reject_mutation_behind_error(command,read_error_snapshot(runtime,generation));
         if(command=="loadout.apply") {
             if(!loadout_ready)throw std::runtime_error("loadout observer unavailable");
             const auto outcome=apply_loadout(runtime,request.at("target"),request.at("expected_revision").get<std::string>());
@@ -99,7 +118,13 @@ json execute(const json& request) {
             const auto before=read_outer_snapshot(runtime,generation);
             if(request.at("expected_revision")!=before.at("revision"))throw std::runtime_error("stale native outer revision");
             const auto target=request.at("target");
-            if(before.value("exam_continuation",false)){
+            if(target.value("action_id",std::string())=="error.return_title"){
+                validate_error_return_target(request,before);
+                if(request.contains("continuation_of")){
+                    validate_error_return_continuation(request,before,mailbox.result_for(request.at("continuation_of").get<std::string>()),generation);
+                    response["continuation_of"]=request.at("continuation_of");
+                }
+            }else if(before.value("exam_continuation",false)){
                 if(!request.contains("continuation_of"))throw std::runtime_error("exam-selector-requires-parent-continuation");
                 validate_exam_continuation(request,before,mailbox.result_for(request.at("continuation_of").get<std::string>()),generation);
                 response["continuation_of"]=request.at("continuation_of");response["parent_context"]=before.at("parent_context");

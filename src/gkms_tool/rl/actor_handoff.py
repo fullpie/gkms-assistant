@@ -23,6 +23,20 @@ def validate_actor_metadata(metadata):
     """Validate the existing OfflinePolicyNet.checkpoint_metadata shape only."""
     frozen = metadata if isinstance(metadata, FrozenJSON) else FrozenJSON.of(metadata)
     value = frozen.unpack()
+    if isinstance(value,dict)and value.get('model_kind')=='gkms.rl.shared-observed-outer-policy.v2':
+        from .observed_outer_projection import VERSION,ACTION_TYPES,OUTER_OBJECTIVE
+        additions={'original_exam_schema_sha256','projection_version','action_types','outer_objective'}
+        if not additions<=set(value):raise ContractError('Complete observed actor model metadata required')
+        base={key:item for key,item in value.items()if key not in additions};base['model_kind']=MODEL_KIND
+        validate_actor_metadata(base)
+        sha256(value['original_exam_schema_sha256'],'original exam feature schema')
+        if (value['original_exam_schema_sha256']==value['feature_schema_sha256']or value['projection_version']!=VERSION
+                or value['action_types']!=list(ACTION_TYPES)or value['candidate_dim']!=512 or
+                value['outer_objective']!={'id':OUTER_OBJECTIVE,'score_scale':10000.,'gamma':1.,
+                    'heads':['outer_q1','outer_q2','outer_expectile_v'],
+                    'reward':'recorded final Produce rating; sparse nonterminal zero'}):
+            raise ContractError('Observed actor categories/schema or separate rating objective differs')
+        return frozen
     expected = {"model_kind": MODEL_KIND, "objective_id": OBJECTIVE_ID,
         "q_action": "complete-ordered-response", "candidate_index_semantics": "batch-columns-not-native-ordinals",
         "value_semantics": "expectile-remaining-return-not-total-score-expectation"}
@@ -107,8 +121,10 @@ def _state(state, binding, kind):
             or state.binding_id != binding.identity or state.scope.run_id != binding.run_id):
         raise ContractError("current actor state/model/run/source binding differs")
     information = state.information.unpack()
+    metadata=binding.metadata.unpack()
+    expected_schema=metadata.get('original_exam_schema_sha256',metadata['feature_schema_sha256'])
     if (type(information) is not dict
-            or information.get("schema") != binding.metadata.unpack()["feature_schema_sha256"]):
+            or information.get("schema") != expected_schema):
         raise ContractError("current actor state feature schema differs from model metadata")
 
 

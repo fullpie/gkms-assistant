@@ -1,13 +1,35 @@
 # GUI 0.2 public package
 
 The 0.2 public model package is `gkms.portable-model-assets.v2`: one fixed shared
-RL actor, the existing portable Master/feature material, and compact release
+RL_v1 actor (`9ca3b3dc…`, 84 exact inference tensors), the existing portable Master/feature material, and compact release
 qualification identities. It contains final inference tensors only. The
 checkpoint, optimizer, qualified RAW samples, private scenario search and
 developer tools remain outside the release. Both BC models remain archived and
 are disabled in the live selector/factory. An existing BC run or pending action
 is preserved and blocked from implicit migration; only an idle next-run
 preference becomes RL.
+
+The same `ObservedOuterPolicyNet` parameters feed exam, observed cultivation
+and initial support/memory inference. Initial inventory, current rentals and
+locks remain user-local inputs. Release qualification contains aggregate counts
+and evidence hashes only: 62,249 exam rows, 17,944 outer rows and 763 complete
+initial validation histories. Original training checkpoints, per-history labels
+and private runtime registrations are not shipped.
+
+The bundled static source remains `12b24ff5…` reference material. A different
+actual game-data version is retained verbatim and is not by itself a veto.
+The original projectors reject missing required card/drink/effect definitions;
+the original GameAssembly, metadata, protocol and legality checks remain hard.
+Each normal run binds the actual native process/session/manager and fixed model
+to its reference policy in the existing run ledger. No private one-run
+authorization, account state or claim file is distributed. Reference lookup
+does not assert whole-Master equivalence, new-definition coverage or improved scores.
+
+`native_policy_features.py` retains its original published bytes (`fbd8c6e3…`)
+used by the portable feature contract. Later private native-MC constructor
+changes are outside public live inference; whole-module equality with the
+development version is not claimed. The separate additive I/O source proof
+remains unchanged.
 
 CPU PyTorch 2.10.0 is required in the build environment and bundled in the GUI
 executable directory. The small bootstrap continues to exclude Torch. Install
@@ -69,10 +91,10 @@ blockers in `build-report.json`.
 
 Build outputs include:
 
-- `gkms-assistant-0.1.0-windows-x64.zip`: first-install portable application.
-- `gkms-assistant-gui-0.1.0-windows-x64.zip`: immutable GUI version slot.
+- `gkms-assistant-0.2.0-windows-x64.zip`: first-install portable application.
+- `gkms-assistant-gui-0.2.0-windows-x64.zip`: immutable GUI version slot.
 - `gkms-assistant-gui-release.json`: GUI updater identity and archive digest.
-- `gkms-assistant-source-0.1.0.zip`: allowlisted corresponding application source.
+- `gkms-assistant-source-0.2.0.zip`: allowlisted corresponding application source.
 - Build logs, source/asset/license manifests, and offline self-check receipts.
 
 The source exporter does not silently rewrite private paths or omit required
@@ -116,6 +138,18 @@ The private loopback token is never printed. It does not start a game, request
 UAC, inspect an existing game session, install files, or submit a game action.
 `--session-file` is accepted by the public entry only with read-only/no-browser
 options and only inside that process's user-data directory.
+
+For explicitly authorized control acceptance, the active slot's executable also
+accepts `--control-session-file ABSOLUTE_USER_DATA_PATH`. This starts the same
+normal public GUI and writes its existing authenticated local session receipt;
+it does not select a model, start cultivation, request elevation, or expose the
+private developer addon. The receipt must be a new file inside user data. This
+option cannot be combined with read-only diagnostics, self-check or maintenance
+worker mode. Normal launches do not write a control receipt, and the existing
+GUI owner removes its receipt on normal shutdown. Keep its token local; inspect
+the ordinary pending/settlement responses rather than submitting duplicate
+commands. The packaged executable can therefore be exercised directly without
+substituting a source-code GUI or another controller.
 
 `candidate_complete`, source export, offline policy loading, real GUI startup,
 native installation, live workflow, policy wins/score quality and publication

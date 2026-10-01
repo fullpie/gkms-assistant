@@ -22,8 +22,9 @@ from .account_loadout import BorrowedSupportCard, LoadoutSelection
 from .audition_rules import _load_rows, load_audition_rules
 from .audition_turn_schedule import calculate_audition_base_multiplier_permils
 from .exam_context import AuditionProgressBonusValues, calculate_audition_bonus_permils
-from .passive_catalog import MasterPassiveCatalog
+from .passive_catalog import MasterPassiveCatalog, SUPPORT_LEVEL_TABLES
 from .passive_runtime import resolve_passive_runtime
+from .qualification_verification import source_stamp
 from .rl_loadout_advisor import LoadoutRecommendationUnavailable, resolve_loadout_effects
 
 AXES = ("vocal", "dance", "visual")
@@ -57,12 +58,38 @@ class LoadoutReferenceMaster:
     """One bounded Master instance, shared with the existing passive catalog."""
     def __init__(self, directory):
         self.directory = Path(directory).resolve()
-        self.catalog = MasterPassiveCatalog.load(self.directory)
+        # Calibration reads only the audition curve and Setting. Defer the
+        # complete support/memory catalog until a loadout actually needs it.
+        paths = (*SUPPORT_LEVEL_TABLES.values(), 'MemoryGift.yaml', 'MemoryAbility.yaml',
+            'SupportCard.yaml', 'ProduceSkill.yaml', 'ProduceEffect.yaml', 'ProduceTrigger.yaml')
+        self._catalog_stamps = {self.directory/name: source_stamp(self.directory/name) for name in paths}
+        self._catalog = None
         self._tables = {}
+        self._table_stamps = {}
+
+    @property
+    def catalog(self):
+        def validate():
+            if any(source_stamp(path) != stamp for path, stamp in self._catalog_stamps.items()):
+                raise LoadoutRecommendationUnavailable('Master passive source changed after binding')
+        validate()
+        if self._catalog is None:
+            catalog = MasterPassiveCatalog.load(self.directory)
+            validate()
+            self._catalog = catalog
+        return self._catalog
 
     def rows(self, name):
+        path = self.directory / (name + '.yaml')
+        stamp = source_stamp(path)
+        if name in self._table_stamps and self._table_stamps[name] != stamp:
+            raise LoadoutRecommendationUnavailable('Master calibration source changed after reading: ' + name)
         if name not in self._tables:
-            self._tables[name] = _load_rows(self.directory / (name + ".yaml"))
+            rows = _load_rows(path)
+            if source_stamp(path) != stamp:
+                raise LoadoutRecommendationUnavailable('Master calibration source changed while reading: ' + name)
+            self._tables[name] = rows
+            self._table_stamps[name] = stamp
         return self._tables[name]
 
     def one(self, table, key):

@@ -22,6 +22,7 @@ import time
 
 PUBLIC_COMMANDS = frozenset({"status", "stop-helper", "start-game", "stop-game", "restart-game", "reload-dll", "stage-dll", "complete-installation"})
 BRIDGE_ROLE = "gkms/native/gkms_runtime_command_bridge.dll"
+FIRST_START_READINESS_TICKS = 90 * 10_000_000
 
 
 def digest(path):
@@ -184,11 +185,14 @@ class PublicPhysicalExecutor:
         return dict(value)
 
     def validate_native_launch(self, job_dir, bootstrap, native_pid, *, previous=None):
-        """Bind readiness to the held launch handle or its sole direct child.
+        """Bind readiness to an exact process, without inventing its ancestry.
 
         A path/name match alone is never sufficient. A child's birth must fall
         within the exact original process's lifetime, preventing PID reuse from
-        turning a later unrelated process into a valid descendant.
+        turning a later unrelated process into a valid descendant. A separately
+        marked first start, with no saved run, may qualify the sole exact game
+        born within this request's bounded readiness window. That alternative
+        explicitly does not prove lineage and is never used for run recovery.
         """
         self.validate_unchanged()
         job = Path(job_dir).resolve()
@@ -208,6 +212,8 @@ class PublicPhysicalExecutor:
             _require(not parent["alive"] and parent["exit_filetime"] <= now,
                 "Bootstrap must have a confirmed exit before accepting its child")
             children = []
+            first_start = owned.get("first_start_no_active_run") is True
+            direct_children = True
             seen = set()
             for row in self.platform.processes("gakumas.exe"):
                 pid = row.get("pid")
@@ -217,14 +223,19 @@ class PublicPhysicalExecutor:
                 _require(observed["pid"] == pid, "Game process inventory identity changed")
                 if not observed["alive"]:
                     continue
-                _require(observed["parent_pid"] == parent["pid"]
+                direct = (observed["parent_pid"] == parent["pid"]
                     and bootstrap["launch_filetime_lower"] <= parent["created_filetime"]
-                    <= observed["created_filetime"] <= parent["exit_filetime"] <= now,
+                    <= observed["created_filetime"] <= parent["exit_filetime"] <= now)
+                window_target = (first_start
+                    and parent["created_filetime"] <= observed["created_filetime"] <= min(now,
+                        bootstrap["launch_filetime_lower"] + FIRST_START_READINESS_TICKS))
+                _require(direct or window_target,
                     "New game process does not belong to this exact bootstrap lifetime")
+                direct_children = direct_children and direct
                 children.append(observed)
             _require(len(children) == 1 and children[0]["pid"] == native_pid,
                 "Native PID is not the unique verified direct child of this launch")
-            current, kind = children[0], "verified-direct-child"
+            current, kind = children[0], "verified-direct-child" if direct_children else "verified-launch-window-target"
         if previous is not None:
             _require(previous.get("kind") == kind and previous.get("process_identity") == current,
                 "Native process changed while its generation and snapshot were being verified")
@@ -232,7 +243,10 @@ class PublicPhysicalExecutor:
             "job_id": job.name, "process_identity": current, "bootstrap_identity": parent,
             "launch_filetime_lower": bootstrap["launch_filetime_lower"],
             "launch_filetime_upper": bootstrap["launch_filetime_upper"],
-            "original_launch_handle_retained": True, "input_submitted": False}
+            "original_launch_handle_retained": True, "input_submitted": False,
+            "launch_lineage_verified": kind != "verified-launch-window-target",
+            "first_start_no_active_run": owned.get("first_start_no_active_run") is True,
+            "readiness_window_filetime_upper": bootstrap["launch_filetime_lower"] + FIRST_START_READINESS_TICKS}
 
     def record_verified_launch(self, job_dir, bootstrap, binding):
         from .native_maintenance import write_json
@@ -259,6 +273,10 @@ class PublicPhysicalExecutor:
             "Public physical job already has an outcome; do not execute it again")
         operation = action["operation"]
         _require(operation in {"start-game", "stop-game", "restart-game", "reload-dll", "stage-dll"}, "Unsupported public physical operation")
+        first_start = action.get("first_start_no_active_run", False)
+        _require(type(first_start) is bool and (not first_start or (
+            operation == "start-game" and action.get("expected_pid") is None and pinned_process is None)),
+            "First-start target binding cannot be used for restart or active-run recovery")
         installed = self.config["bridge"]
         _require(digest(installed) == action["installed_sha256"], "Installed bridge changed before the physical operation")
         candidate_bytes = None
@@ -310,9 +328,11 @@ class PublicPhysicalExecutor:
                     "game_pid": pid, "game_path": identity["path"], "already_running": False,
                     "bootstrap_identity": identity, "launch_filetime_lower": launch_platform.lower_filetime,
                     "launch_filetime_upper": launch_platform.upper_filetime,
-                    "launcher_core": "existing-Python-DirectLauncher", "nested_UAC_requested": False}
+                    "launcher_core": "existing-Python-DirectLauncher", "nested_UAC_requested": False,
+                    "first_start_no_active_run": first_start, "no_game_process_before": True}
                 write_json(job / "bootstrap_launch.json", receipt)
-                self._launches[str(job)] = {"witness": launch_platform.witness, "receipt": receipt}
+                self._launches[str(job)] = {"witness": launch_platform.witness, "receipt": receipt,
+                    "first_start_no_active_run": first_start}
                 retained = True
             finally:
                 if launch_platform.witness is not None and not retained:

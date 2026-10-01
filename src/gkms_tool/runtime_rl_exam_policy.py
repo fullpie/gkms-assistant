@@ -5,6 +5,7 @@ Master binding, primary legality, selector ownership, original UI targets and
 pending settlement remain the same host contracts used by the BC policies.
 """
 from copy import deepcopy
+from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -50,21 +51,32 @@ class RuntimeSharedActorPolicy(RuntimeGuiExamPolicy):
                                             idol_card_id=idol_card_id, run_id=run_id)
             return
         spec = descriptor["specification"]
+        from .runtime_live_exam_input import validate_runtime_reference_trial
+        self.reference_trial = None
+        self._reference_preflight_owner = None
+        if descriptor.get('runtime_reference_trial') is not None:
+            trial = descriptor['runtime_reference_trial']
+            self.reference_trial = validate_runtime_reference_trial(trial,
+                checkpoint_sha256=spec['checkpoint']['sha256'], runtime_source_sha256=spec['runtime_master_source']['sha256'],
+                reference_master_hash=trial['reference_master_hash'], idol_card_id=idol_card_id, produce_id=produce_id)
         self.idol, self.flow_scope = _scope(produce_id, idol_card_id, POLICY_ID)
         self.produce_id, self.idol_card_id, self.run_id = produce_id, idol_card_id, run_id
         self.variant_id = POLICY_ID
         self.model_reference = deepcopy(spec["checkpoint"])
         self.model, self.metadata = load_actor_checkpoint(self.model_reference,
-            dataset_identity=spec["dataset_identity"], training_source_code=spec["training_source_code"])
+            dataset_identity=spec["dataset_identity"], training_source_code=spec["training_source_code"],
+            **({'observed_source_code':spec['observed_source_code']}if 'observed_source_code'in spec else{}))
         self.projector, self.training_projection_id, self.loader_relocation = prepare_actor_projector(
             spec["semantic_sources"], runtime_loader_compatibility=spec.get("runtime_loader_compatibility"),
             runtime_io_equivalence=spec.get("runtime_io_equivalence"),
-            max_entities=self.metadata["feature_schema"].max_entities)
+            max_entities=self.metadata["feature_schema"].max_entities,
+            lazy_materials=bool(spec.get('runtime_io_equivalence')))
         if self.projector.schema != self.metadata["feature_schema"]:
             raise ContractError("Live actor feature schema differs from the trained shared model")
         sources = spec["semantic_sources"]
         self.loader_compatibility = self.projector.compatibility
-        self.source_resolver = self.loader_compatibility.make_source_resolver()
+        self.source_resolver = (getattr(self.projector,'material_source_resolver',None)
+            or self.loader_compatibility.make_source_resolver())
         self.runtime_source = load_runtime_master_source(spec["runtime_master_source"])
         self.runtime_base_projection_id = self.training_projection_id
         from .rl.actor_projection_equivalence import bind_projection_equivalence
@@ -79,8 +91,10 @@ class RuntimeSharedActorPolicy(RuntimeGuiExamPolicy):
         self.projection_equivalence_reference = deepcopy(spec["projection_equivalence"])
         self.encoder = RuntimeMasterFeatureEncoder(sources["contract_set"], sources["original_shared_encoder"],
             runtime_source=self.runtime_source, source_resolver=self.source_resolver,
-            loader_compatibility=self.loader_compatibility)
-        self.catalog = VerifiedLiveMasterCatalog(sources["contract_set"], runtime_encoder=self.encoder)
+            loader_compatibility=self.loader_compatibility,historical_encoder=self.projector.encoder)
+        self.catalog = VerifiedLiveMasterCatalog(sources["contract_set"], runtime_encoder=self.encoder,
+            **({'reference_trial': self.reference_trial, 'runtime_owner': self._reference_owner}
+               if self.reference_trial is not None else {}))
         self.runtime_model_compatibility = self.loader_compatibility.validate_runtime_contract(self.encoder.contract)
         self._model_stat = self._stat()
         from . import live_feature_presence, live_phase_counter_view
@@ -94,10 +108,12 @@ class RuntimeSharedActorPolicy(RuntimeGuiExamPolicy):
             "path": str(dependency), "sha256": sha256_file(dependency)}]
         refs = [descriptor["descriptor_reference"], spec["qualification"], spec["projection_equivalence"], self.model_reference,
                 spec["runtime_master_source"], *sources.values(), *spec["training_source_code"].values()]
+        refs.extend(spec.get('observed_source_code',{}).values())
         if spec.get("runtime_loader_compatibility"):
             refs.append(spec["runtime_loader_compatibility"])
         if spec.get("runtime_io_equivalence"):
             refs.append(spec["runtime_io_equivalence"])
+        refs.extend(getattr(self.projector,'allocation_execution',{}).get('sources',()))
         implementation = Path(__file__).resolve()
         self._implementation_reference = {"path": str(implementation), "sha256": sha256_file(implementation)}
         refs.append(self._implementation_reference)
@@ -116,6 +132,13 @@ class RuntimeSharedActorPolicy(RuntimeGuiExamPolicy):
             "runtime_master_package": self.encoder.runtime_master_binding(
                 self.runtime_source.execution_master_version, produce_id)["runtime_package_binding"]}
         self._session_generation = self._observed_master_identity = None
+        if self.reference_trial is not None:
+            if self.reference_trial['reference_master_hash'] != self.runtime_source.master_hash:
+                raise ContractError('Reference trial does not use the original qualified runtime source')
+            self._binding['runtime_reference_trial'] = deepcopy(self.reference_trial)
+            self._binding['runtime_reference_trial_sha256'] = digest(self.reference_trial)
+            self._binding['source_equivalence_verified'] = False
+            self._binding['training_admitted'] = False
         self._semantic_features = {}
         self.qualification = deepcopy(descriptor["qualification"])
         self.last_secondary_decision = None
@@ -125,10 +148,78 @@ class RuntimeSharedActorPolicy(RuntimeGuiExamPolicy):
         value = path.stat()
         return value.st_size, value.st_mtime_ns, value.st_ctime_ns
 
+    def _reference_owner(self):
+        trial = self.reference_trial
+        if self.run_id.startswith('preflight:'):
+            owner = self._reference_preflight_owner
+            if not isinstance(owner, dict) or owner.get('run_id') is not None:
+                raise ContractError('Reference trial preflight lacks its actual native owner')
+            return deepcopy(owner)
+        from .runtime_live_exam_input import runtime_reference_trial_owner
+        return runtime_reference_trial_owner(trial, run_id=self.run_id,
+            idol_card_id=self.idol_card_id, produce_id=self.produce_id)
+
+    def _public_reference_owner(self):
+        policy = self.public_reference_material_policy
+        if self.run_id.startswith('preflight:'):
+            owner = self._public_reference_preflight_owner
+            if not isinstance(owner, dict) or owner.get('run_id') is not None:
+                raise ContractError('Public material preflight lacks the actual native owner')
+            return {'native_owner': deepcopy(owner),
+                'engine_identity': deepcopy(self._public_reference_observed_engine_identity), 'expected_binding': None}
+        from .run_identity import load_run
+        from .runtime_live_exam_input import public_reference_material_owner
+        stored = load_run(self.run_id).evidence.get('public_reference_materials')
+        if not isinstance(stored, dict) or stored.get('policy') != policy or stored.get('run_id') not in (None, self.run_id):
+            raise ContractError('Actual run has another or missing public reference-material policy')
+        binding = {**deepcopy(stored), 'run_id': self.run_id}
+        owner = public_reference_material_owner(binding, run_id=self.run_id,
+            idol_card_id=self.idol_card_id, produce_id=self.produce_id)
+        observed_generation = getattr(self, '_public_reference_observed_generation', None)
+        if observed_generation is not None and observed_generation != owner['session_generation']:
+            raise ContractError('Actual exam observation belongs to another public material owner')
+        return {'native_owner': owner,
+            'engine_identity': deepcopy(self._public_reference_observed_engine_identity or binding['engine_identity']),
+            'expected_binding': binding}
+
+    def preflight_model_context(self, payload):
+        if getattr(self, 'public_reference_material_policy', None) is not None:
+            owner = payload.get('native_owner') if isinstance(payload, Mapping) else None
+            if (not isinstance(owner, Mapping) or set(owner) != {'run_id', 'session_generation', 'game_pid'}
+                    or owner.get('run_id') is not None):
+                raise ContractError('Public material preflight requires the actual native process/session')
+            self._public_reference_preflight_owner = deepcopy(dict(owner))
+            self._public_reference_observed_engine_identity = deepcopy(payload.get('engine_identity'))
+        if getattr(self,'reference_trial',None) is not None:
+            owner = payload.get('native_owner') if isinstance(payload, dict) else None
+            if (not isinstance(owner, dict) or set(owner) != {'run_id', 'session_generation', 'game_pid'}
+                    or owner['run_id'] is not None or owner['session_generation'] != self.reference_trial['session_generation']
+                    or owner['game_pid'] != self.reference_trial['game_pid']):
+                raise ContractError('Reference trial requires the actual native pre-AP process/session')
+            self._reference_preflight_owner = deepcopy(owner)
+        result = super().preflight_model_context(payload)
+        if getattr(self, 'public_reference_material_policy', None) is not None:
+            binding = deepcopy(self.catalog.reference_material_binding)
+            self._binding['public_reference_materials'] = binding
+            result.update(public_reference_materials=binding, runtime_policy_binding=self.runtime_policy_binding,
+                training_admitted=False, source_equivalence_verified=False, reference_lookup_only=True)
+        if getattr(self,'reference_trial',None) is not None:
+            result.update(runtime_reference_trial=deepcopy(self.reference_trial), training_admitted=False,
+                source_equivalence_verified=False, reference_lookup_only=True)
+        return result
+
     def _validate(self, prepared):
         if any(self._file_stamp(path) != stamp for path, stamp in self._actor_watches):
             raise ValueError("Private RL model or qualification changed during this run")
-        return super()._validate(prepared)
+        if getattr(self,'reference_trial',None) is not None and prepared.observation.get('session_generation') != self.reference_trial['session_generation']:
+            raise ContractError('Actual exam observation belongs to another reference-trial session')
+        if getattr(self, 'public_reference_material_policy', None) is not None:
+            self._public_reference_observed_engine_identity = deepcopy(prepared.observation['engine_identity'])
+            self._public_reference_observed_generation = prepared.observation.get('session_generation')
+        bound = super()._validate(prepared)
+        if getattr(self, 'public_reference_material_policy', None) is not None:
+            self._binding['public_reference_materials'] = deepcopy(self.catalog.reference_material_binding)
+        return bound
 
     def _provenance(self, decision_type, binding=None):
         return {"kind": "shared-offline-IQL", **self.runtime_policy_binding,

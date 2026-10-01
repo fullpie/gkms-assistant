@@ -2,6 +2,7 @@
 #include "screen_context.hpp"
 #include "pointer_identity.hpp"
 #include "customize_budget.hpp"
+#include "customize_effective_price.hpp"
 #include "reward_group.hpp"
 #include "continuation.hpp"
 #include "exam_selector_close_owner.hpp"
@@ -37,6 +38,38 @@ json integer_sequence(Runtime& r, void* values) {
     auto dispose = optional_getter(r, enumerator, "Dispose");
     (void)dispose;
     return result;
+}
+json customization_pricing_context(Runtime& r){
+    auto user=r.klass("Assembly-CSharp.dll","Campus.Common.User","UserDataManager");
+    auto progress=r.invoke(r.method(user,"get_UserProduceProgress",0),nullptr);
+    if(!progress)throw std::runtime_error("native customization pricing progress unavailable");
+    auto discounts=r.getter(progress,"get_CustomizeDiscountPermils");
+    if(!discounts)throw std::runtime_error("native customization discount collection unavailable");
+    return {{"pricing_step_type",integer(r,progress,"get_StepType")},
+        {"pricing_discount_permils",integer_sequence(r,discounts)},
+        {"pricing_wallet",integer(r,progress,"get_ProducePoint")}};
+}
+json customization_price(Runtime& r,void* data,const json& context){
+    if(!data)throw std::runtime_error("native customization Master option unavailable");
+    const auto type=r.object_class(data);
+    if(r.class_namespace(type)!="Campus.Common.Proto.Client.Master"||r.class_name(type)!="ProduceCardCustomize")
+        throw std::runtime_error("native customization price requires the actual Master option");
+    auto method=r.method(type,"GetAffectedConsumptionPoint",0);
+    if(r.method_result_contract(method)!=json{{"is_static",false},{"return_type","System.Int32"}})
+        throw std::runtime_error("native customization effective-price getter signature differs");
+    const int base=integer(r,data,"get_ProducePoint");
+    const int effective=r.unbox<int>(r.invoke(method,data));
+    if(customization_pricing_context(r)!=context)
+        throw std::runtime_error("native customization pricing context changed during observation");
+    return bind_customization_price(base,effective,context);
+}
+void* confirmation_customize_data(Runtime& r,void* presenter){
+    auto pview=r.read_object_field(presenter,"_view");
+    auto button=pview?r.read_object_field(pview,"_buttonView"):nullptr;
+    if(!button)throw std::runtime_error("native customize confirmation price view is not initialized");
+    auto data=r.getter(button,"get_Customize");
+    if(!data)throw std::runtime_error("native customize confirmation displayed option is unavailable");
+    return data;
 }
 bool active(Runtime& r, void* object) {
     return object && flag(r, r.getter(object, "get_gameObject"), "get_activeInHierarchy");
@@ -355,6 +388,8 @@ bool customize(Runtime& r, void* p, const std::string& screen, json& snapshot) {
                   {"native_tail_index", r.field<int>(list, "_currentEndIndex")},
                   {"selected_card", deck_card(r, selected)}, {"candidates", json::array()},
                   {"customizes", json::array()}};
+    const auto price_context=customization_pricing_context(r);
+    state.update(price_context);state["customization_price_schema"]=customization_price_schema;
     json actions = json::array();
     for (int index = 0; index < static_cast<int>(models.size()); ++index) {
         auto item = models[static_cast<std::size_t>(index)];
@@ -388,7 +423,10 @@ bool customize(Runtime& r, void* p, const std::string& screen, json& snapshot) {
         auto row = json::parse(text(r, data, "ToString"));
         row.update({{"index", index}, {"customize_id", text(r, data, "get_Id")},
                     {"customize_count", integer(r, data, "get_CustomizeCount")},
-                    {"enabled", clickable(r, r.getter(button, "get_Button"))}, {"produce_points", integer(r, data, "get_ProducePoint")}});
+                    {"enabled", clickable(r, r.getter(button, "get_Button"))}});
+        row.update(customization_price(r,data,price_context));
+        row["native_option_enabled"]=row["enabled"];
+        row["enabled"]=row["native_option_enabled"]==true&&customization_price_affordable(row);
         row["selected"]=is_selected;
         row["selection_noop"]=!overlay&&cached_id==row.at("customize_id").get<std::string>();
         if(!overlay&&is_selected){actual_selected_index=index;actual_selected_id=row.at("customize_id");actual_selected_count=row.at("customize_count");}
@@ -396,10 +434,13 @@ bool customize(Runtime& r, void* p, const std::string& screen, json& snapshot) {
         for (auto effect : r.enumerate(r.getter(data, "get_ProduceCardGrowEffects"), 128))
             row["grow_effects"].push_back(json::parse(text(r, effect, "ToString")));
         state["customizes"].push_back(row);
-        if (selecting_customize && selected && row["enabled"] == true && row["selection_noop"] == false)
-            actions.push_back(action("customize.select_option", {{"index", index}, {"selector_type", screen},
+        if (selecting_customize && selected && row["enabled"] == true && row["selection_noop"] == false){
+            json target={{"index", index}, {"selector_type", screen},
                 {"deck_number", integer(r, selected, "get_Number")}, {"customize_id", row["customize_id"]},
-                {"customize_count", row["customize_count"]}}));
+                {"customize_count", row["customize_count"]}};
+            bind_customization_price_target(target,row);
+            actions.push_back(action("customize.select_option",std::move(target)));
+        }
     }
     if (overlay) {
         auto chosen = r.getter(r.getter(model, "get_SelectedCustomize"), "get_Value");
@@ -424,10 +465,20 @@ bool customize(Runtime& r, void* p, const std::string& screen, json& snapshot) {
         actions.push_back(action("customize.back_to_cards", {{"selector_type", screen}}));
     auto execute = r.getter(pview, overlay ? "get_ExecuteCustomizeButton" : "get_ExecuteButton");
     const bool option_selected = state["selected_customize_id"].is_string() && !state["selected_customize_id"].get<std::string>().empty();
-    state["execute_enabled"] = selecting_customize && selected && option_selected && clickable(r, execute);
-    if (state["execute_enabled"] == true)
-        actions.push_back(action("customize.execute", {{"selector_type", screen},
-            {"deck_number", integer(r, selected, "get_Number")}, {"customize_id", state["selected_customize_id"]}}));
+    state["native_execute_button_enabled"] = selecting_customize && selected && option_selected && clickable(r, execute);
+    const json* selected_price=nullptr;
+    for(const auto& row:state["customizes"]){
+        if(row["customize_id"]!=state["selected_customize_id"]||row["customize_count"]!=state["selected_customize_count"])continue;
+        if(selected_price)throw std::runtime_error("selected native customization price is ambiguous");
+        selected_price=&row;
+    }
+    state["execute_enabled"] = state["native_execute_button_enabled"]==true&&selected_price&&customization_price_affordable(*selected_price);
+    if (state["execute_enabled"] == true){
+        json target={{"selector_type", screen},{"deck_number", integer(r, selected, "get_Number")},
+            {"customize_id", state["selected_customize_id"]},{"customize_count",state["selected_customize_count"]}};
+        bind_customization_price_target(target,*selected_price);
+        actions.push_back(action("customize.execute",std::move(target)));
+    }
     auto advance = r.getter(pview, overlay ? "get_EndButton" : "get_GoNextButton");
     state["finish_enabled"] = clickable(r, advance);
     if(!overlay){
@@ -551,16 +602,27 @@ bool append_produce_card_ui_actions(Runtime& r, void* presenter, const std::stri
         auto model=r.getter(presenter,"get_Model");
         auto card=r.getter(model,"get_Card");
         const auto customize_id=text(r,model,"get_CustomizeId");
-        const int points=integer(r,model,"get_ProducePoint");
+        const int model_wallet=integer(r,model,"get_ProducePoint");
+        // The sheet model's ProducePoint is the available wallet. Its actual
+        // displayed option is retained by the original button view.
+        auto data=confirmation_customize_data(r,presenter);
+        if(text(r,data,"get_Id")!=customize_id)throw std::runtime_error("customize confirmation displayed option differs");
+        const auto quote=customization_price(r,data,customization_pricing_context(r));
+        const int count=integer(r,data,"get_CustomizeCount");
         const int number=integer(r,card,"get_Number");
         const auto card_id=text(r,card,"get_ProduceCardId");
         auto button=common_button(r,presenter,"get_ExecuteButton");
         json actions=json::array();
-        if(clickable(r,button))actions.push_back(action("customize.confirm_execute",{{"selector_type",screen},
-            {"deck_number",number},{"card_id",card_id},{"customize_id",customize_id},{"produce_points",points},
-            {"button_instance_id",instance_id(button)}}));
-        set_surface(snapshot,"card_customize",{{"family","customize_confirmation"},{"selector_type",screen},
-            {"deck_number",number},{"card_id",card_id},{"customize_id",customize_id},{"produce_points",points}},actions);
+        if(clickable(r,button)&&customization_price_affordable(quote)&&model_wallet==quote.at("pricing_wallet").get<int>()){
+            json target={{"selector_type",screen},{"deck_number",number},{"card_id",card_id},
+                {"customize_id",customize_id},{"customize_count",count},{"button_instance_id",instance_id(button)}};
+            bind_customization_price_target(target,quote);
+            actions.push_back(action("customize.confirm_execute",std::move(target)));
+        }
+        auto state=quote;state.update({{"family","customize_confirmation"},{"selector_type",screen},
+            {"deck_number",number},{"card_id",card_id},{"customize_id",customize_id},{"customize_count",count},
+            {"confirmation_wallet",model_wallet},{"confirmation_wallet_source","native sheet model wallet; not customization price"}});
+        set_surface(snapshot,"card_customize",state,actions);
         return true;
     }
     if (reward_guide(r, presenter, screen, snapshot)) return true;
@@ -626,6 +688,10 @@ bool submit_produce_card_ui_action(Runtime& r, void* p, const json& target, cons
         click(r,button);return true;
     }
     if(name=="customize.confirm_execute"){
+        auto data=confirmation_customize_data(r,p);
+        if(text(r,data,"get_Id")!=target.at("customize_id").get<std::string>()||integer(r,data,"get_CustomizeCount")!=target.at("customize_count").get<int>())
+            throw std::runtime_error("customize confirmation option changed");
+        require_customization_price_target(target,customization_price(r,data,customization_pricing_context(r)));
         auto button=common_button(r,p,"get_ExecuteButton");
         if(instance_id(button)!=target.at("button_instance_id").get<std::string>())throw std::runtime_error("customize confirmation button changed");
         click(r,button);return true;
@@ -639,6 +705,21 @@ bool submit_produce_card_ui_action(Runtime& r, void* p, const json& target, cons
     }
     if (name == "customize.execute" || name == "customize.finish") {
         const bool overlay = screen == "ProduceCustomizeCardSelectorOverlayPresenter";
+        if(name=="customize.execute"){
+            auto buttons=overlay?r.enumerate(r.read_object_field(view(r,p),"_customizeInfoButtons"),128):
+                r.enumerate(r.getter(view(r,p),"get_CustomizeInfoButtonViews"),128);
+            void* quoted{};
+            for(auto button:buttons){
+                if(!button||!active(r,button))continue;
+                auto data=r.getter(button,"get_Customize");
+                if(!data||text(r,data,"get_Id")!=target.at("customize_id").get<std::string>()||
+                    integer(r,data,"get_CustomizeCount")!=target.at("customize_count").get<int>())continue;
+                if(quoted)throw std::runtime_error("customization execute quote is ambiguous");
+                quoted=data;
+            }
+            if(!quoted)throw std::runtime_error("customization execute quote disappeared");
+            require_customization_price_target(target,customization_price(r,quoted,customization_pricing_context(r)));
+        }
         if(name=="customize.finish"&&!overlay&&schedule_customize_finish_canvas(r,view(r,p)).at("input_ready")!=true)
             throw std::runtime_error("native Customize finish canvas is still hidden or not interactive");
         click(r, r.getter(view(r, p), name == "customize.execute" ?
@@ -650,7 +731,11 @@ bool submit_produce_card_ui_action(Runtime& r, void* p, const json& target, cons
         auto buttons = screen == "ProduceCustomizeCardSelectorOverlayPresenter" ?
             r.enumerate(r.read_object_field(view(r, p), "_customizeInfoButtons"), 128) :
             r.enumerate(r.getter(view(r, p), "get_CustomizeInfoButtonViews"), 128);
-        click(r, r.getter(buttons.at(static_cast<std::size_t>(index)), "get_Button"));
+        auto button=buttons.at(static_cast<std::size_t>(index));auto data=r.getter(button,"get_Customize");
+        if(text(r,data,"get_Id")!=target.at("customize_id").get<std::string>()||integer(r,data,"get_CustomizeCount")!=target.at("customize_count").get<int>())
+            throw std::runtime_error("customization option changed");
+        require_customization_price_target(target,customization_price(r,data,customization_pricing_context(r)));
+        click(r, r.getter(button, "get_Button"));
         return true;
     }
     const bool resource = screen == "ProduceResourceSelectorOverlayPresenter";

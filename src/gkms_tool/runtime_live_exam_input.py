@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import re
 
 from .canonical_training_labels import PLAN_BY_NATIVE_VALUE, EFFECT_BY_NATIVE_VALUE, STAGE_BY_NATIVE_VALUE
 from .native_secondary_input import NativeSecondaryInput, _candidate, _freeze
@@ -29,6 +30,159 @@ _ZONE_NAMES = {2: "Hand", 3: "Deck", 4: "Grave", 5: "Lost", 13: "Hold"}
 MASTER_INVENTORY_REFERENCE = {
     "path": str(Path(__file__).resolve().parents[2] / "var/research/fullpower_reconstruction_20260909/master_version_inventory.json"),
     "sha256": "27e053ed41fb23c60c0618861a067d0252c0ad260ea457f7edad8d8a2c797d4a"}
+
+PUBLIC_REFERENCE_POLICY_SCHEMA = 'gkms.public-reference-material-policy.v1'
+PUBLIC_REFERENCE_BINDING_SCHEMA = 'gkms.public-reference-material-binding.v1'
+
+
+def validate_public_reference_material_policy(value, *, checkpoint_sha256,
+        reference_master_hash, model_manifest_sha256):
+    """A release material policy, not a cloned private one-run authorization."""
+    fields = {'schema', 'checkpoint_sha256', 'reference_master_hash', 'model_manifest_sha256',
+        'produce_ids', 'reference_lookup_only', 'source_equivalence_verified',
+        'unknown_definition_policy', 'training_admitted'}
+    if (not isinstance(value, Mapping) or set(value) != fields
+            or value.get('schema') != PUBLIC_REFERENCE_POLICY_SCHEMA
+            or value.get('reference_lookup_only') is not True
+            or value.get('source_equivalence_verified') is not False
+            or value.get('training_admitted') is not False
+            or value.get('unknown_definition_policy') != 'stop'
+            or any(not isinstance(value.get(key), str) or re.fullmatch('[a-f0-9]{64}', value[key]) is None
+                for key in ('checkpoint_sha256', 'reference_master_hash', 'model_manifest_sha256'))
+            or value['checkpoint_sha256'] != checkpoint_sha256
+            or value['reference_master_hash'] != reference_master_hash
+            or value['model_manifest_sha256'] != model_manifest_sha256
+            or not isinstance(value.get('produce_ids'), (list, tuple)) or not value['produce_ids']
+            or any(not isinstance(item, str) for item in value['produce_ids'])
+            or len(set(value['produce_ids'])) != len(value['produce_ids'])
+            or set(value['produce_ids']) - {'produce-004', 'produce-005'}):
+        raise ValueError('Public reference materials differ from the fixed release model/source policy')
+    return deepcopy(dict(value))
+
+
+def validate_public_reference_material_scope(policy, *, checkpoint_sha256,
+        reference_master_hash, model_manifest_sha256, actual_master_version, idol_card_id, produce_id):
+    checked = validate_public_reference_material_policy(policy, checkpoint_sha256=checkpoint_sha256,
+        reference_master_hash=reference_master_hash, model_manifest_sha256=model_manifest_sha256)
+    if (not isinstance(actual_master_version, str) or re.fullmatch('[a-f0-9]{64}', actual_master_version) is None
+            or not isinstance(idol_card_id, str) or not idol_card_id or produce_id not in checked['produce_ids']):
+        raise ValueError('Observed public material version/idol/mode is missing or outside the release scope')
+    return {'actual_master_version': actual_master_version, 'reference_master_hash': reference_master_hash,
+        'checkpoint_sha256': checkpoint_sha256, 'model_manifest_sha256': model_manifest_sha256,
+        'idol_card_id': idol_card_id, 'produce_id': produce_id, 'reference_lookup_only': True,
+        'source_equivalence_verified': False, 'unknown_definition_policy': 'stop', 'training_admitted': False}
+
+
+def bind_public_reference_materials(policy, execution_master, native_owner, *,
+        idol_card_id, produce_id, engine_identity, expected=None):
+    """Bind actual native facts while leaving the reference material identity intact."""
+    if not isinstance(policy, Mapping):
+        raise ValueError('Public reference material policy is required')
+    scope = validate_public_reference_material_scope(policy,
+        checkpoint_sha256=policy.get('checkpoint_sha256'), reference_master_hash=policy.get('reference_master_hash'),
+        model_manifest_sha256=policy.get('model_manifest_sha256'),
+        actual_master_version=execution_master.get('execution_master_version') if isinstance(execution_master, Mapping) else None,
+        idol_card_id=idol_card_id, produce_id=produce_id)
+    if (not isinstance(execution_master, Mapping)
+            or execution_master.get('schema') != 'gkms.native-execution-master-observation.v1'
+            or execution_master.get('authority') != 'native-existing-MasterManager'
+            or execution_master.get('ready') is not True or type(execution_master.get('manager_count')) is not int
+            or execution_master['manager_count'] != 1
+            or execution_master.get('master_update_succeeded') is not True
+            or execution_master.get('master_tables_initialized') is not True
+            or execution_master.get('execution_master_hash') not in (None, scope['actual_master_version'])):
+        raise ValueError('Public reference lookup needs the actual ready native Master manager')
+    _pointer(execution_master.get('manager_instance_id'))
+    if (not isinstance(native_owner, Mapping) or set(native_owner) != {'run_id', 'session_generation', 'game_pid'}
+            or type(native_owner.get('game_pid')) is not int or native_owner['game_pid'] <= 0
+            or not isinstance(native_owner.get('session_generation'), str)
+            or re.fullmatch('[A-Za-z0-9_-]{1,128}', native_owner['session_generation']) is None
+            or native_owner.get('run_id') is not None and
+                (not isinstance(native_owner['run_id'], str) or not native_owner['run_id'])):
+        raise ValueError('Public reference lookup lacks its actual process/session/run owner')
+    # Retain the original GameAssembly, metadata and method-profile gate.
+    validate_live_pc_consumer_identity(engine_identity)
+    result = {'schema': PUBLIC_REFERENCE_BINDING_SCHEMA, **scope,
+        'policy': deepcopy(dict(policy)), 'policy_sha256': _digest(policy),
+        'execution_master': deepcopy(dict(execution_master)),
+        'master_manager_instance_id': execution_master['manager_instance_id'],
+        **deepcopy(dict(native_owner)), 'engine_identity': deepcopy(dict(engine_identity))}
+    if expected is not None:
+        if (not isinstance(expected, Mapping) or expected.get('run_id') not in (None, result['run_id'])
+                or {**expected, 'run_id': result['run_id']} != result):
+            raise ValueError('Public reference materials changed after the actual run binding')
+    return result
+
+
+def public_reference_material_owner(binding, *, run_id, idol_card_id, produce_id):
+    """Use the ordinary run ledger and native status; no private claim file."""
+    from .run_identity import load_run
+    from .runtime_command_client import RuntimeCommandClient
+    if (not isinstance(binding, Mapping) or not isinstance(run_id, str) or not run_id
+            or binding.get('run_id') not in (None, run_id)):
+        raise ValueError('Public reference materials are not bound to this run')
+    run = load_run(run_id)
+    stored = run.evidence.get('public_reference_materials')
+    if (run.idol_card_id != idol_card_id or run.produce_id != produce_id
+            or not isinstance(stored, Mapping) or stored.get('run_id') not in (None, run_id)
+            or {**stored, 'run_id': run_id} != {**binding, 'run_id': run_id}):
+        raise ValueError('Public reference materials differ from the normal run ledger')
+    owner = {'run_id': run_id, **{key: binding[key] for key in ('session_generation', 'game_pid')}}
+    bind_public_reference_materials(binding['policy'], binding['execution_master'], owner,
+        idol_card_id=idol_card_id, produce_id=produce_id, engine_identity=binding['engine_identity'], expected=stored)
+    status = RuntimeCommandClient().read_status()
+    if status.get('session_generation') != owner['session_generation'] or status.get('pid') != owner['game_pid']:
+        raise ValueError('Public reference materials belong to another native process/session')
+    return owner
+
+
+def validate_runtime_reference_trial(value, *, checkpoint_sha256, runtime_source_sha256,
+                                     reference_master_hash, idol_card_id=None, produce_id=None):
+    """Validate an explicit private one-run reference lookup, never equivalence."""
+    fields = {'authorization_id', 'user_authorized', 'actual_master_version', 'reference_master_hash',
+        'runtime_source_sha256', 'checkpoint_sha256', 'idol_card_id', 'produce_id',
+        'session_generation', 'game_pid', 'master_manager_instance_id', 'source_equivalence_verified', 'unknown_definition_policy', 'max_runs'}
+    if (not isinstance(value, Mapping) or set(value) != fields
+            or value.get('user_authorized') is not True or value.get('source_equivalence_verified') is not False
+            or value.get('unknown_definition_policy') != 'stop' or type(value.get('max_runs')) is not int
+            or value['max_runs'] != 1 or type(value.get('game_pid')) is not int or value['game_pid'] <= 0
+            or not isinstance(value.get('authorization_id'), str)
+            or re.fullmatch('[a-f0-9]{32}', value['authorization_id']) is None
+            or not isinstance(value.get('session_generation'), str)
+            or re.fullmatch('[A-Za-z0-9_-]{1,128}', value['session_generation']) is None
+            or any(not isinstance(value.get(key), str) or re.fullmatch('[a-f0-9]{64}', value[key]) is None
+                for key in ('actual_master_version', 'reference_master_hash', 'runtime_source_sha256', 'checkpoint_sha256'))
+            or value['actual_master_version'] == value['reference_master_hash']
+            or value['checkpoint_sha256'] != checkpoint_sha256
+            or value['runtime_source_sha256'] != runtime_source_sha256
+            or value['reference_master_hash'] != reference_master_hash
+            or not isinstance(value.get('idol_card_id'), str) or not value['idol_card_id']
+            or value.get('produce_id') not in ('produce-004', 'produce-005')
+            or idol_card_id is not None and value['idol_card_id'] != idol_card_id
+            or produce_id is not None and value['produce_id'] != produce_id):
+        raise ValueError('Explicit one-run reference-Master authorization differs from its fixed model/source/owner scope')
+    _pointer(value.get('master_manager_instance_id'))
+    return deepcopy(dict(value))
+
+
+def runtime_reference_trial_owner(trial, *, run_id, idol_card_id, produce_id):
+    """Recheck the existing actual run and its single-use authorization claim."""
+    from .run_identity import load_run, DEFAULT_RUN_ROOT
+    from .runtime_command_client import RuntimeCommandClient
+    run = load_run(run_id)
+    if (run.idol_card_id != idol_card_id or run.produce_id != produce_id
+            or run.evidence.get('runtime_reference_trial') != trial):
+        raise ValueError('Reference trial is not recorded on this actual run')
+    path = DEFAULT_RUN_ROOT / 'runtime_reference_trials' / (trial['authorization_id'] + '.json')
+    claim = json.loads(path.read_bytes())
+    if (claim.get('schema') != 'gkms.runtime-reference-trial-claim.v1'
+            or claim.get('authorization') != trial or claim.get('authorization_sha256') != _digest(trial)
+            or claim.get('status') != 'bound' or claim.get('run_id') != run_id):
+        raise ValueError('Reference trial authorization belongs to another or unbound run')
+    status = RuntimeCommandClient().read_status()
+    if status.get('session_generation') != trial['session_generation'] or status.get('pid') != trial['game_pid']:
+        raise ValueError('Reference trial belongs to another native process/session')
+    return {'run_id': run_id, 'session_generation': status['session_generation'], 'game_pid': status['pid']}
 
 
 def _require(ok, message):
@@ -318,12 +472,18 @@ class VerifiedLiveMasterCatalog:
     unique archive-version binding, never an invented DLL observation. Unknown
     versions and ambiguous historical mappings are rejected.
     """
-    def __init__(self, contract_set_reference, inventory_reference=None, *, runtime_encoder=None):
+    def __init__(self, contract_set_reference, inventory_reference=None, *, runtime_encoder=None,
+                 reference_trial=None, runtime_owner=None):
         from .native_structure_contract_set import validate_native_structure_contract_set
         self._stamps = []
         self.contract_set = self._read(contract_set_reference)
         validate_native_structure_contract_set(self.contract_set)
         self._runtime_encoder = runtime_encoder
+        self._reference_trial = deepcopy(reference_trial)
+        self._runtime_owner = runtime_owner
+        if reference_trial is not None:
+            _require(runtime_encoder is not None and callable(runtime_owner),
+                'Reference-Master trial needs its original runtime package and current owner verifier')
         if runtime_encoder is not None:
             from .runtime_master_features import RuntimeMasterFeatureEncoder
             _require(type(runtime_encoder) is RuntimeMasterFeatureEncoder
@@ -401,6 +561,33 @@ class VerifiedLiveMasterCatalog:
         _pointer(execution_master.get("manager_instance_id"))
         version = execution_master.get("execution_master_version")
         runtime_encoder = self._runtime_encoder
+        trial = getattr(self, '_reference_trial', None)
+        if trial is not None:
+            _require(version == trial['actual_master_version'] and produce_id == trial['produce_id'],
+                'Actual native Master or mode differs from this explicit reference trial')
+            _require(_pointer(execution_master['manager_instance_id']) == _pointer(trial['master_manager_instance_id']),
+                'Actual native Master manager differs from this explicit reference trial')
+            _require(execution_master.get('execution_master_hash') in (None, version),
+                'Actual native Master hash contradicts its observed trial version')
+            owner = self._runtime_owner()
+            _require(isinstance(owner, Mapping) and owner.get('session_generation') == trial['session_generation']
+                and owner.get('game_pid') == trial['game_pid'], 'Reference trial belongs to another native process/session')
+            bound = runtime_encoder.runtime_master_binding(trial['reference_master_hash'], produce_id)
+            _require(bound is not None and bound['source_master_hash'] == trial['reference_master_hash']
+                and bound['runtime_package_binding']['source_receipt']['sha256'] == trial['runtime_source_sha256'],
+                'Reference trial package differs from the original verified source')
+            validate_runtime_reference_trial(trial, checkpoint_sha256=trial['checkpoint_sha256'],
+                runtime_source_sha256=bound['runtime_package_binding']['source_receipt']['sha256'],
+                reference_master_hash=bound['source_master_hash'], produce_id=produce_id)
+            # The package keeps its true 12b-style source identity. The actual
+            # observed version is retained verbatim, never relabeled or aliased.
+            bound['provenance'].update(authority='user-authorized-existing-reference-Master-trial',
+                execution_master=deepcopy(execution_master), runtime_reference_trial=deepcopy(trial),
+                native_owner=deepcopy(dict(owner)), source_equivalence_verified=False,
+                reference_lookup_only=True, unknown_definition_policy='stop',
+                native_master_hash_observed=execution_master.get('execution_master_hash') is not None,
+                training_admitted=False, live_policy_win_proven=False)
+            return bound
         if runtime_encoder is not None:
             bound = runtime_encoder.runtime_master_binding(version, produce_id)
             if bound is not None:
@@ -425,4 +612,7 @@ class VerifiedLiveMasterCatalog:
 
 
 __all__ = ["prepare_live_primary", "prepare_live_secondary", "RuntimeLivePrimaryInput",
-    "RuntimeNativeSecondaryInput", "VerifiedLiveMasterCatalog", "MASTER_INVENTORY_REFERENCE", "prepare_live_secondary_feature_input"]
+    "RuntimeNativeSecondaryInput", "VerifiedLiveMasterCatalog", "MASTER_INVENTORY_REFERENCE", "prepare_live_secondary_feature_input",
+    "validate_runtime_reference_trial", "runtime_reference_trial_owner",
+    "validate_public_reference_material_policy", "validate_public_reference_material_scope",
+    "bind_public_reference_materials", "public_reference_material_owner"]

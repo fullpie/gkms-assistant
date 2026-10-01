@@ -210,12 +210,26 @@ def rank_account_loadouts(snapshot: AccountInventorySnapshot, *, idol_card_id: s
                        pair[0].memory_ids, pair[0].borrowed_support.rental_key))[:limit])
 
 
+def _raise_for_game_error(client) -> None:
+    from .controller_client import _serialized_controller_request
+    from .runtime_command_client import RuntimeCommandError
+    from .runtime_outer_runner import RuntimeOuterGateway
+    # Older narrow test/adapter clients do not expose the new capability.
+    if not callable(getattr(client, "read_status", None)):
+        return
+    outcome = RuntimeOuterGateway(client, timeout=30,
+        lease=_serialized_controller_request).return_to_title_if_needed()
+    if outcome is not None:
+        raise RuntimeCommandError(f"game error recovery {outcome.status}: {outcome.detail}")
+
+
 def read_available_loadout(client=None) -> dict[str, object]:
     """Read current scene resources through DLL under the shared input owner."""
     from .controller_client import _serialized_controller_request
     from .runtime_command_client import RuntimeCommandClient
     client = RuntimeCommandClient() if client is None else client
     with _serialized_controller_request(30):
+        _raise_for_game_error(client)
         result = client.execute("read_loadout", timeout=15).require_ok()
     data = result.raw.get("loadout")
     if not isinstance(data, Mapping) or data.get("schema") != "gkms.account-loadout.v1":
@@ -245,20 +259,23 @@ def _release_completed_action(client, request) -> None:
 
 def poll_account_loadout_pending(client=None):
     """Poll the original request only; never create or resubmit an operation."""
+    from .controller_client import _serialized_controller_request
     from .runtime_command_client import RuntimeCommandClient, RuntimeCommandRequest
     client = RuntimeCommandClient() if client is None else client
-    path = _pending_loadout_path(client)
-    if not path.is_file():
-        return None
-    data = json.loads(path.read_text(encoding="utf-8"))
-    request = RuntimeCommandRequest(**{key: data[key] for key in (
-        "request_id", "session_generation", "command", "expected_revision", "target")})
-    result = client.poll_result(request)
-    if result is not None and (result.status == "rejected" or
-                              (result.status == "submitted" and result.raw.get("applied") is True)):
-        _release_completed_action(client, request)
-        path.unlink(missing_ok=True)
-    return result
+    with _serialized_controller_request(30):
+        _raise_for_game_error(client)
+        path = _pending_loadout_path(client)
+        if not path.is_file():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        request = RuntimeCommandRequest(**{key: data[key] for key in (
+            "request_id", "session_generation", "command", "expected_revision", "target")})
+        result = client.poll_result(request)
+        if result is not None and (result.status == "rejected" or
+                                  (result.status == "submitted" and result.raw.get("applied") is True)):
+            _release_completed_action(client, request)
+            path.unlink(missing_ok=True)
+        return result
 
 
 def reconcile_account_loadout_pending(client=None) -> dict[str, object]:
@@ -272,6 +289,7 @@ def reconcile_account_loadout_pending(client=None) -> dict[str, object]:
     from .runtime_command_client import RuntimeCommandClient, RuntimeCommandPending, RuntimeCommandRequest
     client = RuntimeCommandClient() if client is None else client
     with _serialized_controller_request(30):
+        _raise_for_game_error(client)
         path = _pending_loadout_path(client)
         if not path.is_file():
             return {"pending": False, "ready_for_new_selection": True,
@@ -321,6 +339,7 @@ def apply_account_loadout(snapshot: AccountInventorySnapshot, selection: Loadout
     from .runtime_command_client import RuntimeCommandClient, RuntimeCommandPending, RuntimeCommandRequest
     client = RuntimeCommandClient() if client is None else client
     with _serialized_controller_request(30):
+        _raise_for_game_error(client)
         pending_path = _pending_loadout_path(client)
         if pending_path.is_file():
             poll_account_loadout_pending(client)
@@ -349,10 +368,12 @@ def apply_account_loadout(snapshot: AccountInventorySnapshot, selection: Loadout
                 expected_revision=live["revision"], timeout=15)
         except RuntimeCommandPending as error:
             _atomic_write_json(pending_path, error.request.to_dict())
+            _raise_for_game_error(client)
             raise
         if result.status == "unknown" or (result.status == "submitted" and result.raw.get("applied") is not True):
             _atomic_write_json(pending_path, result.request.to_dict())
-        elif result.status == "submitted" and result.raw.get("applied") is True:
+        _raise_for_game_error(client)
+        if result.status == "submitted" and result.raw.get("applied") is True:
             _release_completed_action(client, getattr(result, "request", None))
         return result
 
@@ -364,6 +385,7 @@ def apply_native_memory_locks(snapshot: AccountInventorySnapshot, expected_loado
     from .runtime_memory_autoselect import native_memory_ids
     client = RuntimeCommandClient() if client is None else client
     with _serialized_controller_request(30):
+        _raise_for_game_error(client)
         pending_path = _pending_loadout_path(client)
         if pending_path.is_file():
             poll_account_loadout_pending(client)
@@ -401,10 +423,12 @@ def apply_native_memory_locks(snapshot: AccountInventorySnapshot, expected_loado
             result = client.execute("loadout.apply", target=target, expected_revision=live["revision"], timeout=15)
         except RuntimeCommandPending as error:
             _atomic_write_json(pending_path, error.request.to_dict())
+            _raise_for_game_error(client)
             raise
         if result.status == "unknown" or (result.status == "submitted" and result.raw.get("applied") is not True):
             _atomic_write_json(pending_path, result.request.to_dict())
-        elif result.status == "submitted" and result.raw.get("applied") is True:
+        _raise_for_game_error(client)
+        if result.status == "submitted" and result.raw.get("applied") is True:
             _release_completed_action(client, getattr(result, "request", None))
         return result
 

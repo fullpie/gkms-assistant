@@ -395,7 +395,12 @@ def choose_runtime_card_ui_action(native, *, database: Path = DEFAULT_DATABASE, 
                     reason += "; only known removal valued, replacement pool is not exposed"
                 return choose(candidate, reason, **detail(delta), instance_key=row.get("instance_key"), required_count=required,
                               valuation_fallback=selection_fallback)
-        return choose(matching("card_choice.confirm"), "native selection count and ranked instance set are satisfied")
+        confirmation = matching("card_choice.confirm")
+        if not desired and confirmation is None:
+            return waiting("no beneficial complete mutation and native empty-selection confirmation is unavailable",
+                           status="abstained", selection_type=operation, required_count=0,
+                           valuation_fallback=selection_fallback)
+        return choose(confirmation, "native selection count and ranked instance set are satisfied")
 
     if state["family"] == "customize":
         if state.get("selecting_card") is True:

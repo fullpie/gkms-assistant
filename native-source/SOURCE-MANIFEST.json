@@ -1,11 +1,12 @@
 {
   "schema": "gkms.public-native-corresponding-source.v1",
-  "control_archive_sha256": "834e1d6f51c8413f7e8ce0e9fc842650ff32a1774daf0e07d7e7bc4f5be3b7e8",
-  "localify_source_archive_sha256": "c299e2d653de73d9fcb4fb995bad295aeafdc04f037083e044afc00cd145a9fd",
+  "control_archive_sha256": "2cea61786ba8f33f26d9f59aeaa2ac7b790c0fe280b21e2630a271fdb1d9a689",
+  "localify_source_archive_sha256": "592752549571b5c2d61298f7b2512d0f84660b8df19ca51353c21a37a8c5140d",
   "public_profiles_only": true,
   "test_or_research_DLLs_included": false,
   "compiler_projects": {
     "runtime_command_bridge": [
+      "native/runtime_command_bridge/src/audition_progress_observation.cpp",
       "native/runtime_command_bridge/src/audition_result_adapter.cpp",
       "native/runtime_command_bridge/src/audition_retry_adapter.cpp",
       "native/runtime_command_bridge/src/bridge.cpp",
@@ -60,23 +61,23 @@
   },
   "source_projections": [
     {
-      "path": "native/runtime_command_bridge/src/audition_result_adapter.cpp",
-      "original_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
-      "exported_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+      "path": "native/runtime_command_bridge/src/audition_progress_observation.cpp",
+      "original_sha256": "842e3af14186bd06d23a8aad50da6e526a1efae9f261edd9ec5eaa6fd391dc65",
+      "exported_sha256": "842e3af14186bd06d23a8aad50da6e526a1efae9f261edd9ec5eaa6fd391dc65",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
     {
-      "path": "native/runtime_command_bridge/src/audition_result_adapter.hpp",
-      "original_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
-      "exported_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+      "path": "native/runtime_command_bridge/src/audition_progress_observation.hpp",
+      "original_sha256": "4e6722452c141acf21e4750caa0b75b8a271ef933f97efd40e93c99cc66d1ddc",
+      "exported_sha256": "4e6722452c141acf21e4750caa0b75b8a271ef933f97efd40e93c99cc66d1ddc",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
     {
       "path": "native/runtime_command_bridge/src/runtime.hpp",
-      "original_sha256": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
-      "exported_sha256": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
+      "original_sha256": "40ba5f45dfa823d3dc3020c1aee6a950183dc921fa7da50d7661c53f994000ab",
+      "exported_sha256": "40ba5f45dfa823d3dc3020c1aee6a950183dc921fa7da50d7661c53f994000ab",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -88,9 +89,16 @@
       "active_branch_text_preserved": true
     },
     {
-      "path": "native/runtime_command_bridge/src/audition_retry_adapter.hpp",
-      "original_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
-      "exported_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
+      "path": "native/runtime_command_bridge/src/pc_method_binding.hpp",
+      "original_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
+      "exported_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pointer_identity.hpp",
+      "original_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
+      "exported_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -109,9 +117,23 @@
       "active_branch_text_preserved": true
     },
     {
-      "path": "native/runtime_command_bridge/src/pointer_identity.hpp",
-      "original_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
-      "exported_sha256": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
+      "path": "native/runtime_command_bridge/src/audition_result_adapter.cpp",
+      "original_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+      "exported_sha256": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_result_adapter.hpp",
+      "original_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+      "exported_sha256": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/audition_retry_adapter.hpp",
+      "original_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
+      "exported_sha256": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -138,8 +160,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/bridge.cpp",
-      "original_sha256": "9fd93fd6a6403dc717c42498e0b7ba073ceadfbb56508cf8ac4d1632f31ae3e6",
-      "exported_sha256": "a127396e883708625b84fa1f9643b0502af1c5250a2e90b23f6c49df3612b3ac",
+      "original_sha256": "6040f2213f86c3eb1cbda4634f1116e258cc6a04b33f3709d0e076ae3453a3a0",
+      "exported_sha256": "14dd22012292552139c15c27f5c3bf79ad2b423738e00a7f8223acf0c643620e",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -222,15 +244,43 @@
     },
     {
       "path": "native/shared/public_runtime_paths.hpp",
-      "original_sha256": "a43d855339f6e22171424f1ff4b928cd4dacfc9b962be467a2bc0184f765ca59",
-      "exported_sha256": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+      "original_sha256": "ec04ec32cde9d1625d7ff4e05362b936d1cf6161f21876ec523ed8817127154b",
+      "exported_sha256": "460d028beb86de362be457ab19ab1037cfe11dab905ad9801d728d3fca7435f4",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
     {
       "path": "native/runtime_command_bridge/src/continuation.hpp",
-      "original_sha256": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
-      "exported_sha256": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
+      "original_sha256": "9970523afce01a88e5ab56f66ea658736702393b725ba35df3d8dcf91c15b1ad",
+      "exported_sha256": "925b34bb8b6f74d228aa36e970074cd372195f9e916a7dbb4fb3172870e736c0",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/error_adapter.hpp",
+      "original_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
+      "exported_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/research_query.hpp",
+      "original_sha256": "d43b340f208bce6a4292d771c7067e5b06b59cf74688d8d343211635093a8169",
+      "exported_sha256": "d43b340f208bce6a4292d771c7067e5b06b59cf74688d8d343211635093a8169",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/pc_core_image_capture.hpp",
+      "original_sha256": "3c4908f2546811bb95e148d75bedefe909e4960f5f2ff761e48cb117da817f7b",
+      "exported_sha256": "3c4908f2546811bb95e148d75bedefe909e4960f5f2ff761e48cb117da817f7b",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/research_query_contract.hpp",
+      "original_sha256": "a1c098658c4d26f770c7385fd5c75c81d6444fa570a796f2e662202578bda9d6",
+      "exported_sha256": "a1c098658c4d26f770c7385fd5c75c81d6444fa570a796f2e662202578bda9d6",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -242,16 +292,9 @@
       "active_branch_text_preserved": true
     },
     {
-      "path": "native/runtime_command_bridge/src/pc_method_binding.hpp",
-      "original_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
-      "exported_sha256": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
-      "operation": "select-existing-public-build-branches",
-      "active_branch_text_preserved": true
-    },
-    {
       "path": "native/runtime_command_bridge/src/continuation.cpp",
-      "original_sha256": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
-      "exported_sha256": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
+      "original_sha256": "7df572be4eaa2429294931184b356391bde654ca9a7e5b40c7e6a8407ab1d573",
+      "exported_sha256": "9a95cfa9398fa5d89451cf29c98cea48c373fc37322982ba6b14380cd13e370b",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -305,13 +348,6 @@
       "active_branch_text_preserved": true
     },
     {
-      "path": "native/runtime_command_bridge/src/error_adapter.hpp",
-      "original_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
-      "exported_sha256": "6fce5f3f2e790e704ba05b1471ae2c5c549af84803a36568e8c9f8e06ac14d67",
-      "operation": "select-existing-public-build-branches",
-      "active_branch_text_preserved": true
-    },
-    {
       "path": "native/runtime_command_bridge/src/exam_adapter.cpp",
       "original_sha256": "88b0a7d2787fe3977f51586fdb9d06b1f27177d31238c2523c0c04240c8c43f9",
       "exported_sha256": "88b0a7d2787fe3977f51586fdb9d06b1f27177d31238c2523c0c04240c8c43f9",
@@ -327,8 +363,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/exam_model_revision.hpp",
-      "original_sha256": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
-      "exported_sha256": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
+      "original_sha256": "41224a40fb0d90b885930761f68525fe5e3bdc021661cc8fe37187ce3d586eef",
+      "exported_sha256": "7369ddc4d8c3e5ebf9a38b0baa7bf6e7e168a4936aa3d1185616039bf9e30ead",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -453,8 +489,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/mailbox.cpp",
-      "original_sha256": "cb12b383c0153271cfa262cd02d6957e9ffbd5ece7eeaf371634fdae4108ebd5",
-      "exported_sha256": "f44e5e8b7aecb283129d8543cf017cccb3c2e8b1f0c2fa7f9e491373b3eb19a0",
+      "original_sha256": "800102794110bbb3875ef60e684295b0cd57aad6a115d0ea2f8a2633bb665891",
+      "exported_sha256": "f411ebac775183e052734a26a2afde30ff09b53e7a10b8234e53291176c36036",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -488,8 +524,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/outer_adapter.cpp",
-      "original_sha256": "5e6353d2f3c300676571c0f3dc991c9c5bca8e7c957ba19c1bf1a2c62bb63db8",
-      "exported_sha256": "df7cbda1227a9062539c4d1f1437c9b893c1f784287fefa90ca7d3a89cecf82c",
+      "original_sha256": "a6d75a62ff1a19c0bb58138b3957735c9a3e883622961b5a73f0cd5f70e2408a",
+      "exported_sha256": "2d9b68d2c6c98a0e3f720166f955103224203a3170fe3eeeac28eb7f58c4172b",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -502,8 +538,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/produce_result_adapter.hpp",
-      "original_sha256": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
-      "exported_sha256": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
+      "original_sha256": "6aa2d0902639474ebbf514653957ed2d5c584b987658b4878b551fc7737c3c77",
+      "exported_sha256": "3373e113fe3b6ae18d78083ee632828e4b9ed08524132378e23cb3917fe8e97a",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -579,7 +615,7 @@
     },
     {
       "path": "native/runtime_command_bridge/src/pc_method_binding.cpp",
-      "original_sha256": "db46020c3b1a6479633d337ef4a87fd49ad743f3f543b7d7dce21639e7cdf5ba",
+      "original_sha256": "8056e33663e67d5105aebea84ed8a8c80aae629e95d7751b73afe563d44ca82a",
       "exported_sha256": "56af5d3ae54bc21b177f0ffdf707dda6d926355eca2137e9698936603f550bf6",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
@@ -607,8 +643,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp",
-      "original_sha256": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
-      "exported_sha256": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
+      "original_sha256": "62766c53f19229fae0c5dfc05f36e1f9608d3f90de2496ae8af202cbe8535091",
+      "exported_sha256": "010e0536bf559ac8702ead81838cde73f7add26d8d440e6178313490eccbf8c2",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -616,6 +652,13 @@
       "path": "native/runtime_command_bridge/src/customize_budget.hpp",
       "original_sha256": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
       "exported_sha256": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
+      "operation": "select-existing-public-build-branches",
+      "active_branch_text_preserved": true
+    },
+    {
+      "path": "native/runtime_command_bridge/src/customize_effective_price.hpp",
+      "original_sha256": "0fe379c2c126a07ef0e30e66ad62ba84679b84fce9312da5d1bf547f1474cd00",
+      "exported_sha256": "0fe379c2c126a07ef0e30e66ad62ba84679b84fce9312da5d1bf547f1474cd00",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -656,8 +699,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/produce_result_adapter.cpp",
-      "original_sha256": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
-      "exported_sha256": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
+      "original_sha256": "0a7d2d70c06ea7aaafdce5702a3f463cf423bff4444d99e82982ad881289063f",
+      "exported_sha256": "1e645b99c3f36000eac2588360d6b866d1a76e4720a62085190a646dc23fd99e",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -698,8 +741,8 @@
     },
     {
       "path": "native/runtime_command_bridge/src/runtime.cpp",
-      "original_sha256": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
-      "exported_sha256": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
+      "original_sha256": "609a8f03354344341d33426e38945f53a2459f1473fad4ee545bd30a6fd2011e",
+      "exported_sha256": "609a8f03354344341d33426e38945f53a2459f1473fad4ee545bd30a6fd2011e",
       "operation": "select-existing-public-build-branches",
       "active_branch_text_preserved": true
     },
@@ -804,20 +847,23 @@
   ],
   "files": {
     "native/runtime_command_bridge/src/audition_identity.hpp": "797d6b92a540ffb0ddb3294080aff24948efc02068c21f60eb8d56158c94fffc",
+    "native/runtime_command_bridge/src/audition_progress_observation.cpp": "842e3af14186bd06d23a8aad50da6e526a1efae9f261edd9ec5eaa6fd391dc65",
+    "native/runtime_command_bridge/src/audition_progress_observation.hpp": "4e6722452c141acf21e4750caa0b75b8a271ef933f97efd40e93c99cc66d1ddc",
     "native/runtime_command_bridge/src/audition_result_adapter.cpp": "42f5bec1eff481818754a76853deb0232e6201c4e2f6ef2723f4830155c1b5e8",
     "native/runtime_command_bridge/src/audition_result_adapter.hpp": "38c4da628268908072a55d0b0ed03be427705e3c8c67fb1ca7774fb514688f24",
     "native/runtime_command_bridge/src/audition_retry_adapter.cpp": "430d6d26af324d69ee453b7aa111885c2f4e33986f7d08b88990bd162250e3d9",
     "native/runtime_command_bridge/src/audition_retry_adapter.hpp": "ba8c2089c94d7d0a69bf987b2f109ff25b4fac8ab99728108bdd7c962198714c",
     "native/runtime_command_bridge/src/audition_selection.hpp": "0838caedf114b033223098005ed7cfe2c2adcd5c16167a948faef837a5fc7f5b",
-    "native/runtime_command_bridge/src/bridge.cpp": "a127396e883708625b84fa1f9643b0502af1c5250a2e90b23f6c49df3612b3ac",
+    "native/runtime_command_bridge/src/bridge.cpp": "14dd22012292552139c15c27f5c3bf79ad2b423738e00a7f8223acf0c643620e",
     "native/runtime_command_bridge/src/business_start_gate.hpp": "2ec0f09878ab450cc598bd3d5e4639391d16c197d5948deea0e8fc2cb17722f8",
     "native/runtime_command_bridge/src/callback_method_contract.cpp": "59f0299371f64934f660b8ae663e27641df4be773eefba27808f89df0cb2e505",
     "native/runtime_command_bridge/src/callback_method_contract.hpp": "b1076ec110c0f04fa209cf2655c64bca3bdb63bda3e8bbe3386e5c404a580fae",
-    "native/runtime_command_bridge/src/continuation.cpp": "a12bf9bb031b65f307ec70faa45c83839d0a5444a2669942fdd7b3fa7d75522b",
-    "native/runtime_command_bridge/src/continuation.hpp": "76d4403265d603f14cf2dc531f6d598d9a5b16f6f2204e3cddca9183890ffd33",
+    "native/runtime_command_bridge/src/continuation.cpp": "9a95cfa9398fa5d89451cf29c98cea48c373fc37322982ba6b14380cd13e370b",
+    "native/runtime_command_bridge/src/continuation.hpp": "925b34bb8b6f74d228aa36e970074cd372195f9e916a7dbb4fb3172870e736c0",
     "native/runtime_command_bridge/src/customize_budget.hpp": "6de0017302244ec27392bbda9a3b41b07c5ae8567d7565fe88909116b3707ab7",
     "native/runtime_command_bridge/src/customize_confirmation_adapter.cpp": "2502bf89e3eff02e79c39fb53d7fc43393306b936744ec4f9f58e9d2c49d644a",
     "native/runtime_command_bridge/src/customize_confirmation_adapter.hpp": "a59f059728767ad649f05c1a00ded2f8a199554bd77eeeb046ea3cd7e4eab101",
+    "native/runtime_command_bridge/src/customize_effective_price.hpp": "0fe379c2c126a07ef0e30e66ad62ba84679b84fce9312da5d1bf547f1474cd00",
     "native/runtime_command_bridge/src/drink_inventory_adapter.cpp": "18445849c2aed92c464aab500a58a356d4479e764d5bee7fe791525a43f192c5",
     "native/runtime_command_bridge/src/drink_inventory_adapter.hpp": "13e9cf925b83c6131798c59992ce1b99f24102f3fdb62690df5eb0acb792b866",
     "native/runtime_command_bridge/src/effect_confirmation.hpp": "3235884f9d6dd7a2de3afb47363fc5d3546fa9a2f88c9e7daff6478b867f018f",
@@ -832,7 +878,7 @@
     "native/runtime_command_bridge/src/exam_legal_inputs.hpp": "846d66130faecd94629e978f1231ee3a21980e17bf459cf87c85b1dc8f61cf6b",
     "native/runtime_command_bridge/src/exam_model_observation.cpp": "0643f7c91df6a2a5b29fe77c8f9cdc31ad82c7c4cb62d8bd6f7f93e31cc36445",
     "native/runtime_command_bridge/src/exam_model_observation.hpp": "8a35ebb4316d74635e2722a6197ff45528891cc5ca1c188f090b8e0dc649efef",
-    "native/runtime_command_bridge/src/exam_model_revision.hpp": "93771709e0619a7e57cb2e65c9b18c3c55c66e64590acd906abb0800a07f8ed3",
+    "native/runtime_command_bridge/src/exam_model_revision.hpp": "7369ddc4d8c3e5ebf9a38b0baa7bf6e7e168a4936aa3d1185616039bf9e30ead",
     "native/runtime_command_bridge/src/exam_reference_presence.cpp": "4e15bfd853f3f75df2f52e6dc7ae3493232ecda31180f7fec077a3f5709371c2",
     "native/runtime_command_bridge/src/exam_reference_presence.hpp": "ad3f55b9aabef5533e597568a34316bd3aa4c047b75f246f74d533818052ca68",
     "native/runtime_command_bridge/src/exam_save_serializer.cpp": "48205e428e13508a8c884c017f2a144b0e8751bfb83103cb328619b03548b91d",
@@ -850,7 +896,7 @@
     "native/runtime_command_bridge/src/live_presentation_adapter.cpp": "f8a9afb87786d09f3d70e1f6eff185d2a8f0abba6a08bfb7b70c24ef775f4ec9",
     "native/runtime_command_bridge/src/live_presentation_adapter.hpp": "7299ea54784eb4dd05d42b08e127e6ff3669ac4ae48d1b4d66c2e9449500e1b9",
     "native/runtime_command_bridge/src/login_touch.hpp": "3048a0b0fc4b11ac01351ccd4ee06248181be333b85e99807fb783d59b55b803",
-    "native/runtime_command_bridge/src/mailbox.cpp": "f44e5e8b7aecb283129d8543cf017cccb3c2e8b1f0c2fa7f9e491373b3eb19a0",
+    "native/runtime_command_bridge/src/mailbox.cpp": "f411ebac775183e052734a26a2afde30ff09b53e7a10b8234e53291176c36036",
     "native/runtime_command_bridge/src/mailbox.hpp": "816224010e584e4b77802853e65a62e18f4a594563dafcd43b36b0adcb9523a3",
     "native/runtime_command_bridge/src/managed_field_kind.hpp": "c324c632dc3f69a95de23b9fb35c5a0f0d35ccaa66109f3b7c9ed85627026f36",
     "native/runtime_command_bridge/src/memory_auto_adapter.cpp": "289c6a9229ca14f9fd5d677ee6f1bc435157cf4ea4fec3e0abf250d60ea5fc6d",
@@ -862,10 +908,11 @@
     "native/runtime_command_bridge/src/native_trace.cpp": "e8908c0a56ba61601d10c942f79bd3a0f89438383216e302222029d7b86e06b9",
     "native/runtime_command_bridge/src/native_trace.hpp": "6feeafcfcb1dab204ab3ed678b2cdb6d49f14431910c2aaa6d291c43593af5d5",
     "native/runtime_command_bridge/src/nullable_int32_storage.hpp": "32ceb526c3d740c32186db7cd900ca88cf15d83f1339305fc29d71077ed9ad7a",
-    "native/runtime_command_bridge/src/outer_adapter.cpp": "df7cbda1227a9062539c4d1f1437c9b893c1f784287fefa90ca7d3a89cecf82c",
+    "native/runtime_command_bridge/src/outer_adapter.cpp": "2d9b68d2c6c98a0e3f720166f955103224203a3170fe3eeeac28eb7f58c4172b",
     "native/runtime_command_bridge/src/outer_adapter.hpp": "205826ca44ed997ce531957495421726cb37e4dc5ec12f84cea40c665453c17e",
     "native/runtime_command_bridge/src/outer_pointer_guard.cpp": "1f71faaebb854bf17298b1cff7eef6e04eaafc3c11b4c250305db29030a98ec4",
     "native/runtime_command_bridge/src/outer_pointer_guard.hpp": "a617b5ec80a87aa8a16898be966a9b2af7006d41e9b2fe0bb8c9fdc56bdbb9a7",
+    "native/runtime_command_bridge/src/pc_core_image_capture.hpp": "3c4908f2546811bb95e148d75bedefe909e4960f5f2ff761e48cb117da817f7b",
     "native/runtime_command_bridge/src/pc_method_binding.cpp": "56af5d3ae54bc21b177f0ffdf707dda6d926355eca2137e9698936603f550bf6",
     "native/runtime_command_bridge/src/pc_method_binding.hpp": "4ebba43967ac42862773060d9bd16b43bbec5bc42bb6db66fd85374cba712fa6",
     "native/runtime_command_bridge/src/pc_method_contract_table.hpp": "32f79935fce0d920d69d7a9a43572c6bb93c76958c8e42074ae224a5c271acf6",
@@ -873,25 +920,27 @@
     "native/runtime_command_bridge/src/pc_version_profile.cpp": "614f3a4720eb4992acc714e1e64d5e895f064db6858e94faba5b066b61cf5040",
     "native/runtime_command_bridge/src/pc_version_profile.hpp": "5b6b14626e11fd5b142845af38f9fee5c9c51d77c40f157f4ef55e16dff7c3cc",
     "native/runtime_command_bridge/src/pointer_identity.hpp": "6ecf2b9d46f81ba79b4284b50242a1d6ff96d16ff5465b5a310e23c8135303f3",
-    "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp": "c2bd2fbe232e82fa6e2076e8941fb24916d9fca51193de52fdf6d5e054589b12",
+    "native/runtime_command_bridge/src/produce_card_ui_adapter.cpp": "010e0536bf559ac8702ead81838cde73f7add26d8d440e6178313490eccbf8c2",
     "native/runtime_command_bridge/src/produce_card_ui_adapter.hpp": "fb46736c92c04b0136c3257415def44dbcce4f8d9b356008fc6aac041998d2e4",
     "native/runtime_command_bridge/src/produce_effect_view_adapter.cpp": "513eb8cedd58ef350a2c612e66d2a988a0758ecb65a8d02a8b06a2484ae4e337",
     "native/runtime_command_bridge/src/produce_effect_view_adapter.hpp": "5f44b00ef4c5c13e24c5f40bc08831d608cc23bd6f4215db3280fe001b21ac21",
     "native/runtime_command_bridge/src/produce_lifecycle_adapter.cpp": "c26a44db26e8939b0ac17d83d15a0f2360222f0a3a387ed54ba783ee57c15596",
     "native/runtime_command_bridge/src/produce_lifecycle_adapter.hpp": "ef60e27ff482abf67172114c09eac2c0376262f185daa22808bbe41532334004",
-    "native/runtime_command_bridge/src/produce_result_adapter.cpp": "b4367acb5dbb516734e83fa3988ec7ceeccf02651f478435565a70a00bd3d7a6",
-    "native/runtime_command_bridge/src/produce_result_adapter.hpp": "873d65446552fe25ce81887b7238a390d5a08c7ba53044e1ac8e4bad7a2acc10",
+    "native/runtime_command_bridge/src/produce_result_adapter.cpp": "1e645b99c3f36000eac2588360d6b866d1a76e4720a62085190a646dc23fd99e",
+    "native/runtime_command_bridge/src/produce_result_adapter.hpp": "3373e113fe3b6ae18d78083ee632828e4b9ed08524132378e23cb3917fe8e97a",
     "native/runtime_command_bridge/src/recommended_replay_adapter.cpp": "cbe87fded17fd0ed4b8d2ee61bf14368f5c919b43cc598e1aa24f030129028b8",
     "native/runtime_command_bridge/src/recommended_replay_adapter.hpp": "195b6e20e082f2af442f19e5009b523ccdb1065d6164c5ec89f358e66f33246e",
     "native/runtime_command_bridge/src/replay_entry_adapter.cpp": "bb50326f480d9979b48f8499821f83df2722a56b3a527826873700bb24a4e062",
     "native/runtime_command_bridge/src/replay_entry_adapter.hpp": "01d4265ce756c6fa6926703092f914a186059846a4e2b47703e803de7dff4021",
+    "native/runtime_command_bridge/src/research_query.hpp": "d43b340f208bce6a4292d771c7067e5b06b59cf74688d8d343211635093a8169",
+    "native/runtime_command_bridge/src/research_query_contract.hpp": "a1c098658c4d26f770c7385fd5c75c81d6444fa570a796f2e662202578bda9d6",
     "native/runtime_command_bridge/src/result_score_notice_adapter.cpp": "5fc2947fe461ac4cf251304a9c839ea14fbb4dc7c1f9751774fd66fedab4c53f",
     "native/runtime_command_bridge/src/result_score_notice_adapter.hpp": "5909b2fd0ce6e1d1e5c11db6ec044fb649c6b0ab5a1d7e0529ef24374298f5b6",
     "native/runtime_command_bridge/src/reward_drink_capacity_adapter.cpp": "beeb4a7d5b214afab7eaa7e716efabd006ff4d671f2e612785a43997099941fe",
     "native/runtime_command_bridge/src/reward_drink_capacity_adapter.hpp": "7bc1c590aad67197b92cb556a9c5c830f1a31aa84f756c7e73f7981617b16685",
     "native/runtime_command_bridge/src/reward_group.hpp": "0738b522034c5e4e6565f58be8f4240d66138390869ce5f7845d79a5ec110213",
-    "native/runtime_command_bridge/src/runtime.cpp": "e12e54119a540c8af56758c02a09cb3e07ec3232297d23fd3f609f5f09d41205",
-    "native/runtime_command_bridge/src/runtime.hpp": "b122b6d57ef713ead0909615d095da7fadb783794b969fa70c9526fa559c2e04",
+    "native/runtime_command_bridge/src/runtime.cpp": "609a8f03354344341d33426e38945f53a2459f1473fad4ee545bd30a6fd2011e",
+    "native/runtime_command_bridge/src/runtime.hpp": "40ba5f45dfa823d3dc3020c1aee6a950183dc921fa7da50d7661c53f994000ab",
     "native/runtime_command_bridge/src/screen_context.cpp": "1fb46220438e521d8ce6945601136c6bf59439fb38d9e01da9279ec6547c747a",
     "native/runtime_command_bridge/src/screen_context.hpp": "2f271437a9ab35d5a9b441b9baaa88737ef8c8bb9d50167dd97c833237d7321a",
     "native/runtime_command_bridge/src/selection_memory_adapter.cpp": "b1dfe648fc2b6b94c3e98addb9e11f230431bd49f8cc3b3c08521d4241a73060",
@@ -906,10 +955,10 @@
     "native/runtime_exam_recorder/src/recorder.hpp": "3f52ed93044695ec0685f32141fa1ab885c44e0746aee0fa2b95c45bf444fe18",
     "native/runtime_exam_recorder/src/recorder_field_contract.hpp": "74a5f7a866db86eeec6f535501126d00bc393e320c810d3d9932df4c53768dbc",
     "native/runtime_exam_recorder/src/validate_use_hand_card_abi.hpp": "2fbb7fcf326a10b664b25b5b65bd7338ca9d6ecf43a337489852009f63ec8302",
-    "native/shared/public_runtime_paths.hpp": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+    "native/shared/public_runtime_paths.hpp": "460d028beb86de362be457ab19ab1037cfe11dab905ad9801d728d3fca7435f4",
     "native/telemetry_observer/src/il2cpp_api.cpp": "920f917b95be5cd897733299d62aa89e707b678416d076660470c04741b58942",
     "native/telemetry_observer/src/il2cpp_api.hpp": "9716f45ff4b35290e47434f935f07cb659f092f68d6290c25fc343d682246622",
-    "premake5.lua": "d3b97fc2d7349b533b776c9eb594abe507558ef96e87b1822fef96d6b18cb1d5",
+    "premake5.lua": "cd44a7ac6f1c500493ad15af1a64677d1bc7789821d609b6961cfa4aeb24267a",
     "README.md": "b69f547f8a7abc31b038eee10d877b287783db5c75b0ff9afada3e2b16393f81",
     "third_party/localify/conanfile.txt": "fc60bdba5ff68ec4818d5ecdd4dfcb4d5d54e7251ee693ee96d72aecd9c2ff92",
     "third_party/localify/deps/minhook/include/MinHook.h": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
@@ -970,7 +1019,7 @@
     "third_party/localify/LICENSE-INVENTORY.json": "de5d960394f1ddf5a4660c77c7847c3c2923c95a70b02fc567d7b580779cdf71",
     "third_party/localify/premake5.lua": "9d3285a841c6e59058a0aedd9da6b6ca29229051055ea11f2e3bea7f433ed9f1",
     "third_party/localify/README.md": "068326a0355ee6be3cec6bec7c822e9fde8e68b93c030a1c16f8728b92491358",
-    "third_party/localify/SOURCE-MANIFEST.json": "d1026eb81959ccfa2e3b097d5974333ee1b9c63f26394ffb255994de89518fba",
+    "third_party/localify/SOURCE-MANIFEST.json": "81bbbda7c4575ebc5903d4d3cccf6a876cd17cefaf7672d69ad087828bf266c0",
     "third_party/localify/src/console.cpp": "a79dbe6eb9057a2953aea1b7149b8b603ff94507ac8ec8697923e5e2436bcb47",
     "third_party/localify/src/deps/fmt-11.0.2/include/fmt/args.h": "6a4fe19bc08cb59e1b0b03b4e0f1cbbb7ba545b03ca97bd58df1be3f03f66c55",
     "third_party/localify/src/deps/fmt-11.0.2/include/fmt/base.h": "0a5f29a922aabcc1c0b88eb41589e7e81cf976bfdf791ef5e059554a7735009a",
@@ -1054,7 +1103,7 @@
     "third_party/localify/src/imgui/LICENSE.txt": "29f44af2b6551afda01b8b9ad568fcf650439b2d8cd3b67142b99f4255e1235d",
     "third_party/localify/src/main.cpp": "59236d8e704d5f37854c5e56ab92d80dfec789f222f1629bf38343b20e95155b",
     "third_party/localify/src/platformDefine.hpp": "0a79ceceb6d07514bab002518364aeb561709101d0bd84d7d8bc505e659ff5d8",
-    "third_party/localify/src/public_runtime_paths.hpp": "b9df43078e7b9807de77b255a6d49b534bc81029af745ec9c69013375a62cc47",
+    "third_party/localify/src/public_runtime_paths.hpp": "460d028beb86de362be457ab19ab1037cfe11dab905ad9801d728d3fca7435f4",
     "third_party/localify/src/resourceUpdate/resourceUpdate.cpp": "f3c5ba8e1bb74a61c67fcd2861bead1f429ecc98d90a7aaf5de8880ae5bd0a14",
     "third_party/localify/src/resourceUpdate/resourceUpdate.hpp": "b8a6f39369bfcde66f091161f13194c810692876c0b00c6bc97f3a8ef54ff099",
     "third_party/localify/src/resourceUpdate/unzip.hpp": "1f214c69bc74823112a59642a9643e05f3cd3c2266fe36fe62fb26c2881a07ef",

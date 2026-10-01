@@ -77,8 +77,11 @@ def _owner_identity(raw, state, child):
     return kind, _IDENTITY + _PANEL_IDENTITY
 
 
-def choose_runtime_reward_drink_capacity_action(native, *, deck_context, database: Path = DEFAULT_DATABASE):
+def validate_runtime_reward_drink_capacity(native, *, skip_intent=False):
+    """Validate parent/stock/phase; skip_intent never admits an unselected discard."""
     raw = native.raw if hasattr(native, "raw") else native
+    if type(skip_intent) is not bool:
+        raise RewardDrinkCapacityError('skip intent must be explicit')
     if not isinstance(raw, Mapping):
         raise RewardDrinkCapacityError("native capacity snapshot is not an object")
     ui = raw.get("ui_state", {})
@@ -114,8 +117,9 @@ def choose_runtime_reward_drink_capacity_action(native, *, deck_context, databas
             raise RewardDrinkCapacityError("native skip confirmation is ambiguous")
         detail = {"source": "native-reward-drink-capacity", "phase": phase, "status": "ready",
                   "reason": "confirm the native reward skip; retain all owned drinks"}
-        return (dict(matches[0]), detail) if matches else (None, {**detail, "status": "waiting"})
-    if not child and state.get("is_drink_max") is not True:
+        return dict(raw=raw, state=state, phase=phase, actions=actions, identity_keys=identity_keys,
+                    skip_result=(dict(matches[0]), detail) if matches else (None, {**detail, "status": "waiting"}))
+    if not child and state.get("is_drink_max") is not True and not skip_intent:
         return None  # Normal reward receipt does not need capacity preparation.
     expected = {"reward_full": owner_kind,
                 "drink_detail": "ProduceDrinkConfirmSheetPresenter",
@@ -133,7 +137,7 @@ def choose_runtime_reward_drink_capacity_action(native, *, deck_context, databas
     if type(state["selected_reward_quantity"]) is not int or state["selected_reward_quantity"] != 1:
         raise RewardDrinkCapacityError("capacity preparation currently requires one actual reward drink")
     owned = state.get("owned_drinks")
-    if not isinstance(owned, list) or len(owned) != limit:
+    if not isinstance(owned, list) or (len(owned) > limit if skip_intent else len(owned) != limit):
         raise RewardDrinkCapacityError("capacity preparation requires the actual full owned inventory")
     ids = []
     for index, row in enumerate(owned):
@@ -167,9 +171,21 @@ def choose_runtime_reward_drink_capacity_action(native, *, deck_context, databas
                 rows = resolve_present_quantities({**raw, "collections": {**raw.get("collections", {}), "present": bound}}, rows)
             except ValueError as error:
                 raise RewardDrinkCapacityError("native panel quantity binding: " + str(error)) from error
-        chosen = [row for row in rows if row.get("selected") is True]
+        unselected_skip = (skip_intent and ui.get('select_status') in (0, 2)
+                           and state.get('select_status') == ui.get('select_status'))
+        if unselected_skip:
+            # A native Skip can be chosen before selecting a reward. Preserve
+            # that observed state; do not forge selected=True to reuse receipt
+            # semantics. This admission is only for the skip confirmation chain.
+            if (state.get('all_rewards_are_drinks') is not True
+                    or any(row.get('selected') is not False for row in rows)
+                    or any(action.get('action_id') in _CAPACITY_ACTIONS for action in raw.get('legal_actions', ()))):
+                raise RewardDrinkCapacityError('unselected skip has contradictory native selection/capacity controls')
+            chosen = [row for row in rows if row.get('index') == selected]
+        else:
+            chosen = [row for row in rows if row.get("selected") is True]
         if (len(chosen) != 1 or chosen[0].get("index") != selected or ui.get("selected_index") != selected
-                or ui.get("select_status") != 1 or ui.get("receive_enabled") is not False
+                or not unselected_skip and (ui.get("select_status") != 1 or not skip_intent and ui.get("receive_enabled") is not False)
                 or chosen[0].get("resource_type") not in (3, "ProduceResourceType_ProduceDrink")
                 or chosen[0].get("resource_id") != state["selected_reward_id"] or chosen[0].get("quantity") != 1):
             raise RewardDrinkCapacityError("capacity preparation does not bind the selected blocked drink reward")
@@ -183,16 +199,29 @@ def choose_runtime_reward_drink_capacity_action(native, *, deck_context, databas
         raise RewardDrinkCapacityError("native capacity actions are unavailable")
     for action in actions:
         name, target = action.get("action_id"), action.get("target")
-        if name not in _CAPACITY_ACTIONS and not (owner_kind == "ScheduleFanPresentScreenPresenter" and name == "reward.skip"):
+        if name not in _CAPACITY_ACTIONS and not (owner_kind == "ScheduleFanPresentScreenPresenter" and name in {"reward.skip", "reward.confirm_skip"}):
             continue
         if not isinstance(target, Mapping) or target.get("action_id") != name or any(
                 type(target.get(k)) is not type(state[k]) or target.get(k) != state[k] for k in identity_keys):
             raise RewardDrinkCapacityError("native capacity action belongs to another reward or inventory")
-        if name == "reward.skip":
+        if name in {"reward.skip", "reward.confirm_skip"}:
             continue
         slot = _integer(target.get("owned_index"), "action owned slot")
         if slot >= limit or target.get("drink_id") != ids[slot] or child and slot != opened:
             raise RewardDrinkCapacityError("native capacity action targets a different owned drink")
+    return dict(raw=raw, ui=ui, child=child, state=state, phase=phase, owner_kind=owner_kind,
+                identity_keys=identity_keys, selected=selected, limit=limit, owned=owned, ids=ids,
+                opened=opened, actions=actions)
+
+
+def choose_runtime_reward_drink_capacity_action(native, *, deck_context, database: Path = DEFAULT_DATABASE):
+    checked = validate_runtime_reward_drink_capacity(native)
+    if checked is None:
+        return None
+    if "skip_result" in checked:
+        return checked["skip_result"]
+    raw, state, phase, child = (checked[key] for key in ("raw", "state", "phase", "child"))
+    limit, ids, opened, actions = (checked[key] for key in ("limit", "ids", "opened", "actions"))
     context = context_from_native(raw)
     supplied = deck_context() if callable(deck_context) else deck_context
     if not isinstance(supplied, Mapping):

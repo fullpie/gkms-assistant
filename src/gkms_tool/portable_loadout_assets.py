@@ -52,3 +52,74 @@ def load_portable_passive_catalog(directory):
         produce_skills=tables["ProduceSkill"], produce_effects=tables["ProduceEffect"], produce_triggers=tables["ProduceTrigger"])
     catalog.portable_source = {"schema": SCHEMA, "master_hash": MASTER_HASH, "manifest_sha256": RELEASE_MANIFEST_SHA256}
     return catalog
+
+
+def portable_initial_descriptor(assets):
+    """Read the release's model-bound aggregate evidence, never private data."""
+    from copy import deepcopy
+    assets.validate_unchanged()
+    reference = assets.manifest['files']['actor_qualification']
+    qualification = assets.read(reference)
+    value = qualification.get('initial_loadout')
+    checkpoint = qualification.get('original_checkpoint_identity')
+    if (not isinstance(value, dict) or not isinstance(checkpoint, dict) or value.get('checkpoint') != checkpoint
+            or checkpoint.get('sha256') != assets.manifest['models']['rl_shared_iql']['original_model_sha256']
+            or type(checkpoint.get('bytes')) is not int or checkpoint['bytes'] <= 0
+            or value.get('method') != 'shared-initial-composition-return-RL'
+            or value.get('semantic_mode') != 'rich-static'
+            or type(value.get('trained_updates')) is not int or value['trained_updates'] <= 0
+            or value.get('trained_critic_updates') != value['trained_updates']
+            or value['trained_updates'] != qualification.get('training_updates')
+            or value.get('master_hash') != assets.manifest['master_hash']
+            or value.get('execution_master_version') != assets.manifest['execution_master_version']
+            or type(value.get('validation_histories')) is not int or value['validation_histories'] <= 0
+            or value.get('validation_critic_rows') != 10 * value['validation_histories']
+            or value['validation_histories'] != qualification.get('initial_validation_histories')
+            or qualification.get('evaluation_complete') is not True
+            or value.get('runtime_reference_trial_exported') is not False):
+        raise ValueError('公開編成模型缺少同版本訓練／完整評估證據。')
+    cells = value.get('scope_cells')
+    if (not isinstance(cells, list) or not cells or any(not isinstance(cell, list) or len(cell) != 2
+            or any(not isinstance(item, str) or not item for item in cell) for cell in cells)
+            or len({tuple(cell) for cell in cells}) != len(cells)):
+        raise ValueError('公開編成流派／模式範圍無法確認。')
+    return {**deepcopy(value), 'portable': True, 'reference': assets.physical_reference(reference)}
+
+
+def build_portable_initial_source(assets):
+    """Reuse the original semantic projector over the verified public tables."""
+    from .portable_model_assets import PortableCardFeatures
+    from .portable_outer_assets import asset_directory, verify_assets, RELEASE_MANIFEST_SHA256
+    from .rl.observed_outer_fine_projection import FineOuterSemanticSource
+    from .rl.observed_initial_loadout import SOURCE_SCHEMA
+    root = asset_directory()
+    if root is None:
+        raise ValueError('公開編成所需的遊戲資料尚未安裝。')
+    manifest = verify_assets(root)
+    if manifest['master_hash'] != assets.manifest['master_hash']:
+        raise ValueError('公開編成與模型的遊戲資料版本不同。')
+    path = root / 'manifest.json'
+    reference = {'path': str(path.resolve()), 'sha256': RELEASE_MANIFEST_SHA256, 'bytes': path.stat().st_size}
+
+    class Source(FineOuterSemanticSource):
+        def initial_passive_catalog(self):
+            from .passive_catalog import MasterPassiveCatalog, SUPPORT_LEVEL_TABLES
+            if not hasattr(self, '_initial_catalog'):
+                self._initial_catalog = MasterPassiveCatalog(memory_gifts=[],
+                    memory_abilities=self._table_rows('MemoryAbility.yaml'),
+                    support_cards=self._table_rows('SupportCard.yaml'),
+                    support_skill_levels={key: self._table_rows(name) for key, name in SUPPORT_LEVEL_TABLES.items()},
+                    produce_skills=self._table_rows('ProduceSkill.yaml'),
+                    produce_effects=self._table_rows('ProduceEffect.yaml'),
+                    produce_triggers=self._table_rows('ProduceTrigger.yaml'))
+            return self._initial_catalog
+
+    def unchanged():
+        assets.validate_unchanged()
+        verify_assets(root)
+
+    source = Source(PortableCardFeatures(assets), reference, validate_materials=unchanged)
+    source.initial_binding = {'schema': SOURCE_SCHEMA, 'source_master_hash': manifest['master_hash'],
+        'portable_models_manifest': assets.reference, 'portable_outer_manifest': reference}
+    source.validate_unchanged()
+    return source

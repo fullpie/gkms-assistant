@@ -155,6 +155,14 @@ class GkmsAdapter:
                 idol_card_id=idol_card_id, plan_type=profile.get('plan_type'),
                 exam_effect_type=profile.get('exam_effect_type'),
                 target_cycles=self.target_cycles() if target_cycles is None else target_cycles)
+            if descriptor.get('id') == 'rl_shared_iql' and descriptor.get('private_only') is True:
+                from ..private_loadout_mode import RL, load_recommendation_mode, require_loadout_reference_scope
+                panel = getattr(self.app, 'card_library_panel', None)
+                loadout_mode = getattr(panel, 'recommendation_mode', None)
+                if loadout_mode is None:
+                    loadout_mode = load_recommendation_mode()
+                if loadout_mode == RL:
+                    require_loadout_reference_scope(descriptor, idol_card_id=idol_card_id, produce_id=mode_id)
         except (OSError, TypeError, ValueError) as error:
             return str(error)
         return None

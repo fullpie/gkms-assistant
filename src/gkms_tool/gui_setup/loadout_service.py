@@ -110,15 +110,14 @@ class LoadoutService:
         rl_mode = mode == "shared_offline_rl"
         proposals = [_proposal(row) for row in panel._recommendations if not row.selection.memory_ids or rl_mode]
         from ..application_paths import public_installation
-        methods = [{"id": "game_and_rules", "label": "既有支援排序＋遊戲回憶推薦", "available": True}]
-        if not public_installation(self.root):
-            from ..private_loadout_mode import private_rl_descriptor
-            try:
-                descriptor = private_rl_descriptor(root=self.root)
-                rl_error = None
-            except (OSError, ValueError, KeyError, TypeError) as error:
-                descriptor, rl_error = None, str(error)
-            methods.append({"id": "shared_offline_rl", "label": "RL 輔助支援卡＋回憶推薦", "available": descriptor is not None, "reason": rl_error})
+        methods = [{"id": "game_and_rules", "label": "支援能力／SP 排序＋遊戲回憶推薦", "available": True}]
+        from ..private_loadout_mode import private_rl_descriptor
+        try:
+            descriptor = private_rl_descriptor(root=self.root)
+            rl_error = None
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            descriptor, rl_error = None, str(error)
+        methods.append({"id": "shared_offline_rl", "label": "模型推薦支援卡＋回憶", "available": descriptor is not None, "reason": rl_error})
         scope = panel.selection_scope() if panel.selection_scope is not None else (None, None)
         raw = None if inventory is None else inventory.to_dict()
         names = {}
@@ -143,6 +142,7 @@ class LoadoutService:
             "pending_apply": pending, "pending_invalid": bool(panel._invalid_pending or pending_error),
             "pending_error": pending_error, "can_reconcile_pending": self.can_reconcile_pending(),
             "recommendation_mode": mode, "recommendation_methods": methods,
+            "recommendation_mode_note": "此選項只決定支援卡／回憶的編成方式；演出與培育策略仍使用已選的固定 RL 模型。",
             "recommendation_evidence": getattr(panel, "recommendation_evidence", None),
             "capabilities": {"cancel": self.can_cancel_recommendation(), "mode": not blocked, "refresh": not blocked, "read": not blocked or self.can_reconcile_pending(),
                 "recommend": not blocked and inventory is not None and panel.selection_scope is not None,

@@ -1,6 +1,9 @@
 #include "mailbox.hpp"
 #include <fstream>
 #include <set>
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+#include "research_query_contract.hpp"
+#endif
 
 namespace gkms::bridge {
 namespace {
@@ -51,14 +54,26 @@ void validate_request(const json& request,const std::string& generation) {
     if(request.value("session_generation",std::string())!=generation) throw std::runtime_error("stale session generation");
     const auto command=request.value("command",std::string());
     const std::set<std::string> commands={"status","read_snapshot","read_inventory","read_model_context","read_loadout","loadout.apply","read_outer_snapshot","outer.action","exam.play","exam.drink","exam.end_turn"
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+        ,"read_pc_contracts","read_diagnostic",
+        "official_replay.inspect","official_replay.prepare","official_replay.start","official_replay.poll","official_replay.release"
+#endif
     };
     if(!commands.contains(command)) throw std::runtime_error("unsupported command");
     if(request.contains("target")&&!request["target"].is_object()) throw std::runtime_error("target must be object");
+#if !defined(GKMS_PUBLIC_PORTABLE) && !defined(GKMS_PRIVATE_RECOMMENDED_QUERY)
+    if(command=="read_diagnostic")validate_research_query(request.at("target"));
+#endif
     if(request.contains("continuation_of")){
         const auto parent=request.at("continuation_of").get<std::string>();
+        const auto target=request.at("target");
+        const bool error_return=target.value("action_id",std::string())=="error.return_title"&&
+            !target.contains("exam_continuation")&&!target.contains("parent_context");
+        const bool exam_selector=target.value("exam_continuation",false)==true&&target.contains("parent_context")&&
+            target.value("action_id",std::string())!="error.return_title";
         if(command!="outer.action"||!safe_id(parent)||parent==request.at("request_id").get<std::string>()||
-           request.at("target").value("exam_continuation",false)!=true||!request.at("target").contains("parent_context"))
-            throw std::runtime_error("invalid Exam continuation descriptor");
+           (!error_return&&!exam_selector))
+            throw std::runtime_error("invalid native continuation descriptor");
     }
     if(command.starts_with("exam.")||command=="loadout.apply"||command=="outer.action"||
        command=="official_replay.prepare"||command=="official_replay.start"||command=="official_replay.release") {

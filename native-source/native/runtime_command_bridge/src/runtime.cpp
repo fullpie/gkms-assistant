@@ -108,6 +108,17 @@ json Runtime::method_parameter_contract(void* method) {
         api<Api::Free>("il2cpp_free"),
     });
 }
+json Runtime::method_result_contract(void* method) {
+    if(!managed_thread()||!method)throw std::runtime_error("method result contract requires managed method");
+    std::uint32_t implementation_flags{};
+    auto flags=api<std::uint32_t(*)(void*,std::uint32_t*)>("il2cpp_method_get_flags")(method,&implementation_flags);
+    auto type=api<const void*(*)(void*)>("il2cpp_method_get_return_type")(method);
+    if(!type)throw std::runtime_error("method return type unavailable");
+    auto name=api<char*(*)(const void*)>("il2cpp_type_get_name")(type);
+    if(!name)throw std::runtime_error("method return name unavailable");
+    const std::string text(name);api<void(*)(void*)>("il2cpp_free")(name);
+    return {{"is_static",(flags&0x0010u)!=0},{"return_type",text}};
+}
 void* Runtime::invoke(void* method, void* instance, std::initializer_list<void*> arguments) {
     if (!managed_thread()) throw std::runtime_error("managed invocation on wrong thread");
     if (!method) throw std::runtime_error("null method");

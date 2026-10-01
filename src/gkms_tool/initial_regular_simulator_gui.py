@@ -2975,6 +2975,33 @@ def _default_live_runner(**kwargs: Any) -> InitialRegularAutopilotResult:
 
         native_kwargs = dict(kwargs)
         native_kwargs.pop("stage_number", None)
+        # Repository-only composition. Public builds keep their existing
+        # dispatcher and never import private research/native artifacts.
+        import os
+        from .application_paths import public_installation
+        if public_installation() and native_kwargs.get("settlement_only") is not True:
+            if native_kwargs.get("exam_policy_variant") != "rl_shared_iql":
+                raise ValueError("公開培育需要本版固定共用 RL 模型。")
+            from .portable_actor_assets import load_portable_outer_policy_factory
+            native_kwargs["outer_policy_factory"] = load_portable_outer_policy_factory(
+                progress_callback=native_kwargs.get("progress_callback"))
+        elif os.environ.get("GKMS_PRIVATE_RUNTIME_PROFILE") and native_kwargs.get("settlement_only") is not True:
+            from .private_outer_policy import load_private_outer_policy_factory
+            if native_kwargs.get("exam_policy_variant") != "rl_shared_iql":
+                raise ValueError("私人外層 RL 需要同一個固定共用 RL 演出模型。")
+            callback=native_kwargs.get("progress_callback")
+            latest_progress={}
+            def report_progress(value):
+                latest_progress.update(deepcopy(dict(value)))
+                if callback is not None:callback(deepcopy(latest_progress))
+            def report_outer(value):
+                event=value["outer_model_progress"]
+                label="外層 RL："+str(event.get("status","準備中"))
+                if "processed"in event:
+                    label+=f" {event['processed']}/{event.get('unique_initializations','?')}，快取 {event.get('cached_requests',0)}，{event.get('elapsed_seconds',0):.1f} 秒"
+                report_progress({**value,"recent_step":{"action":label,"target":None}})
+            native_kwargs["outer_policy_factory"]=load_private_outer_policy_factory(progress_callback=report_outer)
+            native_kwargs["progress_callback"]=report_progress
         result = run_runtime_cultivation(**native_kwargs)
         if (isinstance(result, InitialRegularAutopilotResult) and result.completed
                 and getattr(result, "native_completed_run_evidence", None) is None):

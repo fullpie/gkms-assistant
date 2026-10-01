@@ -182,7 +182,9 @@ class LeaderboardOuterChoicePrior:
         return tuple(sorted(legal, key=lambda action: (-scores[action], order[action])))
 
 
-def _contest_identity(history: Mapping[str, Any]) -> Mapping[str, str] | None:
+def _contest_identity(
+    history: Mapping[str, Any], *, require_uniform_runtime: bool = True,
+) -> Mapping[str, str] | None:
     auditions = history.get("auditions")
     if not isinstance(auditions, list) or len(auditions) != 3:
         return None
@@ -216,10 +218,19 @@ def _contest_identity(history: Mapping[str, Any]) -> Mapping[str, str] | None:
         if any(not value for value in identity.values()):
             return None
         identities.append(identity)
-    return identities[0] if all(value == identities[0] for value in identities) else None
+    keys = tuple(identities[0]) if require_uniform_runtime else (
+        "plan_type", "character_id", "idol_card_id", "exam_effect_type")
+    if any(any(value[key] != identities[0][key] for key in keys) for value in identities):
+        return None
+    # Observed-only weekly callers bind initial materials to the first actual
+    # audition, even when a later recorded audition followed a game update.
+    # Ordinary BC callers retain the original uniform runtime requirement.
+    first = 0 if require_uniform_runtime else next(
+        index for index, audition in enumerate(auditions) if audition["stepType"] == _AUDITIONS[0])
+    return identities[first]
 
 
-def _route_shape(produce_id: str) -> tuple[int, Mapping[int, str]] | None:
+def _route_shape(produce_id: str, *, master_dir: Path | None = None) -> tuple[int, Mapping[int, str]] | None:
     """Return the authoritative week/stage shape for one N.I.A. mode.
 
     The leaderboard response is a raw source, so its schedule length and
@@ -230,7 +241,7 @@ def _route_shape(produce_id: str) -> tuple[int, Mapping[int, str]] | None:
     """
 
     try:
-        calendar = load_route_calendar(produce_id)
+        calendar = load_route_calendar(produce_id, **({'master_dir': Path(master_dir)} if master_dir is not None else {}))
         profile = nia_stage_positions(produce_id)
     except (FileNotFoundError, KeyError, OSError, TypeError, ValueError):
         return None
@@ -263,6 +274,7 @@ def _route_shape(produce_id: str) -> tuple[int, Mapping[int, str]] | None:
 
 def _parse_outer_history(
     history: Mapping[str, Any],
+    *, master_dir: Path | None = None, require_uniform_runtime: bool = True,
 ) -> tuple[str, Mapping[str, str], tuple[LeaderboardOuterChoice, ...]] | None:
     """Validate and project one de-identified ``produceHistory`` object.
 
@@ -277,12 +289,12 @@ def _parse_outer_history(
     score = history.get("score", 0)
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         return None
-    route_shape = _route_shape(produce_id)
+    route_shape = _route_shape(produce_id, **({'master_dir': master_dir} if master_dir is not None else {}))
     if route_shape is None:
         return None
     total_weeks, audition_by_week = route_shape
     audition_weeks = set(audition_by_week)
-    identity = _contest_identity(history)
+    identity = _contest_identity(history, require_uniform_runtime=require_uniform_runtime)
     if identity is None:
         return None
     schedules = history.get("schedules")

@@ -56,7 +56,8 @@ def load_gui_preferences(path: Path = DEFAULT_GUI_PREFERENCES) -> GuiPreferences
         from .runtime_command_client import DEFAULT_BRIDGE_ROOT
         active = load_active_run()
         pending = any((DEFAULT_BRIDGE_ROOT / name).exists() for name in (
-            "pending_action.json", "pending_exam.json", "pending_outer.json", "pending_loadout.json"))
+            "pending_action.json", "pending_exam.json", "pending_outer.json", "pending_loadout.json",
+            "pending_error_return_title.json"))
         if active is None and not pending:
             variant = "rl_shared_iql"
     return GuiPreferences(**original, policy_variant_id=variant)

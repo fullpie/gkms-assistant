@@ -393,15 +393,17 @@ class CardLibraryPanel(_WorkerPanel):
         self.status.set("正在以固定 RL 模型評估支援卡與回憶組合…" if mode == "shared_offline_rl" else "正在依實際強化數值與 SP 加成推薦支援卡…")
 
         def operation() -> object:
-            from .private_loadout_mode import recommend_with_mode, private_rl_descriptor
+            from .private_loadout_mode import recommend_with_mode, private_rl_descriptor, require_loadout_reference_scope
             from .passive_catalog import MasterPassiveCatalog
 
+            descriptor = private_rl_descriptor(refresh=True) if mode == "shared_offline_rl" else None
+            if descriptor is not None:
+                require_loadout_reference_scope(descriptor, idol_card_id=idol_card_id, produce_id=produce_id)
             loadout = read_game_loadout_for_gui()
             if mode == "shared_offline_rl" and self._cancel.is_set():
                 return {"cancelled":True,"loadout":loadout,"mode":mode}
             if self._catalog is None:
                 self._catalog = MasterPassiveCatalog.load()
-            descriptor = private_rl_descriptor(refresh=True) if mode == "shared_offline_rl" else None
             evaluation_report = {}
             cancelled_errors = ()
             if mode == "shared_offline_rl":
@@ -423,6 +425,7 @@ class CardLibraryPanel(_WorkerPanel):
                         "quality_improvement_verified": False,
                         "method": ("固定 RL 模型／原生演出評估；培育收益採來源綁定估算"
                             if evaluation_report.get("score_kind") == "native-policy-score" else
+                            "共用模型學習的編成偏好；不是演出預估分數" if evaluation_report.get("score_kind") == "initial-composition-log-probability" else
                             "固定 RL Value 輔助估計；不是實際演出分數" if evaluation_report.get("score_kind") == "remaining-return-value-proxy"
                             else "固定 RL 模型評估；詳細分數種類尚未回傳"),
                         "score_kind": evaluation_report.get("score_kind"),

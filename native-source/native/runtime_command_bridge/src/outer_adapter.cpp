@@ -28,6 +28,7 @@
 #include "outer_pointer_guard.hpp"
 #include "business_start_gate.hpp"
 #include "event_choices_contract.hpp"
+#include "audition_progress_observation.hpp"
 #include <array>
 #include <cstddef>
 #include <unordered_set>
@@ -523,6 +524,7 @@ json read_outer_snapshot(Runtime& runtime,const std::string& generation){
         scalar_state=native_outer_progress_state(runtime,progress_object);
         trace_mark("outer.scalar_state.after");
     }
+    const auto audition_progress=read_audition_progress_observation(runtime);
     json collections=json::object();
     const std::array<std::pair<const char*,const char*>,10> getters={{{"schedule","get_UserProduceProgressScheduleList"},{"event","get_UserProduceProgressEventList"},
         {"business","get_UserProduceProgressBusinessList"},{"present","get_UserProduceProgressPresentList"},{"shop","get_UserProduceProgressShopList"},
@@ -535,7 +537,8 @@ json read_outer_snapshot(Runtime& runtime,const std::string& generation){
     }
     json snapshot={{"schema","gkms.outer-runtime-snapshot.v1"},{"screen_type",screen},{"underlying_screen_type",context.at("screen_type")},{"busy",context.at("tree_busy")},
         {"progress",progress},{"state",scalar_state},{"screen_instance_id",std::to_string(reinterpret_cast<std::uintptr_t>(presenter))},
-        {"collections",collections},{"surface","unsupported"},{"legal_actions",json::array()},{"actions_complete",false}};
+        {"collections",collections},{"audition_progress",audition_progress},
+        {"surface","unsupported"},{"legal_actions",json::array()},{"actions_complete",false}};
     json state=json::object();
     json blockers=json::array();
     trace_mark("outer.actions.before");
@@ -591,6 +594,7 @@ json read_outer_snapshot(Runtime& runtime,const std::string& generation){
     // press has already moved to a standard screen. This adds no legal input.
     snapshot["live_loading_receipt"]=read_live_loading_receipt(runtime);
     if(protobuf(runtime,user_static(runtime,"get_UserProduceProgress"))!=progress)throw std::runtime_error("outer progress changed while copying");
+    if(read_audition_progress_observation(runtime)!=audition_progress)throw std::runtime_error("outer audition transaction changed while copying");
     apply_outer_pointer_guard(snapshot,read_outer_pointer_guard(runtime,presenter,layer!=nullptr,foreground_effect_pointer_target(snapshot)));
     snapshot["revision"]=sha256(generation+exam_model_revision_view(snapshot).dump());
     snapshot["captured_at"]=utc_now();

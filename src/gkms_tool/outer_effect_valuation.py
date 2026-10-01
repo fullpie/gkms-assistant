@@ -45,6 +45,10 @@ class EffectFeatures:
     fixed_stamina_reduction: float = 0.
     generated_slots: float = 0.
     direct_stamina_damage: float = 0.
+    # Individual committed changes are kept separate: two +15 effects are not
+    # one +30 status-change event. Weight is frequency, never delta magnitude.
+    status_changes: list = field(default_factory=list)
+    status_change_unknown: set = field(default_factory=set)
 
 
 GAINS = {"ExamReview": "review", "ExamCardPlayAggressive": "motivation", "ExamBlock": "block",
@@ -89,12 +93,18 @@ def _child_effect(path, stamp, identity):
     return load_master_effect(identity, path)
 
 
-def _merge(target, source, factor=1.):
+def _merge(target, source, factor=1., *, status_timing=None):
     for key in SCALARS:setattr(target, key, getattr(target, key) + factor * getattr(source, key))
     for key in COUNTERS:getattr(target, key).update({k: v * factor for k, v in getattr(source, key).items()})
     target.unknown.update(source.unknown)
     target.terms.extend(source.terms)
     target.assumptions.extend(source.assumptions)
+    target.status_change_unknown.update(source.status_change_unknown)
+    for event in source.status_changes:
+        copied = {**event, "weight": event["weight"] * factor}
+        if status_timing and copied.get("timing") == "direct":
+            copied["timing"] = status_timing
+        target.status_changes.append(copied)
 
 
 def project_master_card(features, card, *, database, ancestry=()):
@@ -190,6 +200,11 @@ def project_effect(features, effect, *, database, factor=1., ancestry=()):
     if kind in GAINS:
         features.gains[GAINS[kind]] += v1 * factor
         if kind == "ExamBlock":features.converters["motivation_to_block"] += factor
+        features.status_changes.append({"effect_id":effect.id,
+            "effect_type":"ProduceExamEffectType_" + ("ExamBlock" if kind == "ExamBlockFix" else kind),
+            "resource":GAINS[kind], "base_difference":v1,
+            "motivation_multiplier":1. if kind == "ExamBlock" else 0.,
+            "weight":factor, "timing":"direct"})
     elif kind == "ExamParameterBuff":features.gains["condition"] += turn * factor;quantity_source = "turn"
     elif kind in {"ExamLesson", "ExamLessonFix"}:features.direct += v1 * count * factor;features.hits += count * factor
     elif kind in CONVERTERS:features.converters[CONVERTERS[kind]] += v1 / 1000 * count * factor;features.hits += count * factor
@@ -199,8 +214,15 @@ def project_effect(features, effect, *, database, factor=1., ancestry=()):
             "value": v1 * count * v2 / 1000 * factor})
     elif kind == "ExamBlockAddMultipleAggressive":
         features.gains["block"] += v1 * count * factor;features.converters["motivation_to_block"] += (1 + v2 / 1000) * count * factor
+        features.status_changes.append({"effect_id":effect.id,"effect_type":"ProduceExamEffectType_ExamBlock",
+            "resource":"block","base_difference":v1,"motivation_multiplier":1+v2/1000,
+            "weight":count*factor,"timing":"direct"})
     elif kind == "ExamReviewDependExamBlock":features.converters["block_to_review"] += v1 / 1000 * factor
-    elif kind in MULTIPLY:features.amplify[MULTIPLY[kind]] += v1 / 1000 * factor
+    elif kind in MULTIPLY:
+        features.amplify[MULTIPLY[kind]] += v1 / 1000 * factor
+        # The old utility approximation is retained, but is not an exact
+        # committed-delta source for a threshold listener.
+        features.status_change_unknown.add(MULTIPLY[kind])
     elif kind == "ExamCardDraw":features.draw += v1 * factor
     elif kind == "ExamPlayableValueAdd" and effect.effect_count > 0:
         features.extra_play += effect.effect_count * factor;quantity_source = "effect_count"
@@ -237,6 +259,38 @@ def project_effect(features, effect, *, database, factor=1., ancestry=()):
         "count": effect.effect_count, "turn": turn, "quantity_source": quantity_source, "modeled": True})
 
 
+def _status_change_events(raw, trigger_id, environment, window):
+    """Positive-threshold status events; Master filter and >= per-entry delta.
+
+    This reuses the existing status-change boundary: committed signed delta,
+    non-consumption, matching affected status (including BlockFix -> Block).
+    Resource growth and event frequency remain disclosed outer estimates.
+    """
+    values, kinds = raw.get("phaseValues", []), raw.get("effectTypes", [])
+    if (len(values) != 1 or type(values[0]) is not int or values[0] <= 0
+            or len(kinds) != 1 or not isinstance(kinds[0], str)):
+        return None, f"trigger-status-change-shape:{trigger_id}"
+    kind = kinds[0].removeprefix("ProduceExamEffectType_")
+    if kind not in GAINS:
+        return None, f"trigger-status-change-effect-unresolved:{trigger_id}:{kind}"
+    resource = GAINS[kind]
+    if resource in environment.get("status_change_unknown", ()):
+        return None, f"trigger-status-change-source-unresolved:{trigger_id}:{resource}"
+    events = environment.get("status_change_events")
+    if not isinstance(events, (list, tuple)):
+        return None, f"trigger-status-change-event-pool-missing:{trigger_id}"
+    threshold, total = values[0], 0.
+    for event in events:
+        if event["effect_type"] != kinds[0]:continue
+        low, high = event["difference_range"]
+        # The range is a resource-growth scenario, not an observed bound. Do
+        # not divide a status stock by the threshold or sum separate effects.
+        chance = (float(low >= threshold) if low == high else
+            max(0., min(1., (high - threshold) / (high - low))))
+        total += max(0., event["events_per_turn"]) * window * chance
+    return total, None
+
+
 def _trigger(trigger_id, *, database, environment, window, persistent):
     raw = master_row(database, "produce_exam_trigger", trigger_id)
     if raw is None:return None, f"trigger-missing:{trigger_id}"
@@ -246,6 +300,10 @@ def _trigger(trigger_id, *, database, environment, window, persistent):
     if phase in {"ExamEndTurn", "ExamStartTurn", "ExamTurnInterval", "StartPlay"}:events = window
     elif phase in {"ExamCardPlay", "ExamCardPlayAfter", "ExamPlayCountInterval", "ExamPlayTurnCountInterval"}:events = window * environment["plays_per_turn"]
     elif phase in {"None", "ExamStartExam"}:events = 1.
+    elif phase == "ExamStatusChange":
+        if not persistent:return None, f"trigger-status-change-owner-unresolved:{trigger_id}"
+        events, error = _status_change_events(raw, trigger_id, environment, window)
+        if error:return None, error
     else:return None, f"trigger-event-context:{trigger_id}:{phase}"
     probability = 1.
     if raw.get("fieldStatusCheckTypes"):
@@ -266,7 +324,7 @@ def _trigger(trigger_id, *, database, environment, window, persistent):
         if raw.get("lowerSearchCount", 0) not in (0, 1) or raw.get("upperSearchCount", 0) not in (0, 1):
             return None, f"trigger-search-count-unresolved:{trigger_id}:{search}"
     types, values = raw.get("fieldStatusTypes", []), raw.get("fieldStatusValues", [])
-    if raw.get("fieldStatusProduceCardSearchIds") or raw.get("effectTypes") or raw.get("cardMovePositionType") not in (None, "", "ProduceCardMovePositionType_Unknown"):
+    if raw.get("fieldStatusProduceCardSearchIds") or (raw.get("effectTypes") and phase != "ExamStatusChange") or raw.get("cardMovePositionType") not in (None, "", "ProduceCardMovePositionType_Unknown"):
         return None, f"trigger-runtime-predicate:{trigger_id}"
     stocks = environment["stocks"]
     fields = {"ParameterBuff": "condition", "LessonBuffUp": "concentration", "ReviewUp": "review",
@@ -276,7 +334,7 @@ def _trigger(trigger_id, *, database, environment, window, persistent):
         if name not in fields:return None, f"trigger-field-unresolved:{trigger_id}:{name}"
         threshold = max(1., values[i] if i < len(values) else 1.)
         probability *= min(1., max(0., stocks.get(fields[name], 0.)) / threshold)
-    if raw.get("phaseValues"):
+    if raw.get("phaseValues") and phase != "ExamStatusChange":
         if len(raw["phaseValues"]) != 1:return None, f"trigger-phase-arguments:{trigger_id}"
         if phase not in {"ExamPlayCountInterval", "ExamPlayTurnCountInterval", "ExamTurnInterval"}:
             return None, f"trigger-phase-arguments:{trigger_id}"
@@ -321,7 +379,7 @@ def materialize(features, *, database, environment, horizon, available=None):
             # Resolving a child is not a reason to assume it is free or played
             # immediately. Its represented share dilutes the same play budget.
             weight=exposure*schedule['factor']
-            _merge(result,child,weight)
+            _merge(result,child,weight,status_timing="generated")
             result.generated_slots+=weight
             result.terms.append({'effect_id':eid,'timing':kind,'modeled':not child.unknown,
                 'target_card_id':schedule['card_id'],'target_upgrade':schedule['upgrade'],'created_count':1,
@@ -362,6 +420,12 @@ def materialize(features, *, database, environment, horizon, available=None):
         result.terms.append({"effect_id": eid, "timing": kind, "modeled": True,
             "expected_activations": activations, "activation_opportunity_range": [0., max(activations, opportunity)],
             "available_turns_estimate": window, "delay": schedule.get("delay"), "trigger_id": schedule.get("trigger_id")})
+        trigger = master_row(database, "produce_exam_trigger", schedule.get("trigger_id", "")) if schedule.get("trigger_id") else None
+        if trigger and trigger.get("phaseTypes") == ["ProduceExamPhaseType_ExamStatusChange"]:
+            result.terms[-1]["status_change"] = {"threshold":trigger.get("phaseValues"),
+                "effect_types":trigger.get("effectTypes"),"comparison":"per-committed-delta >= threshold",
+                "event_opportunities":environment.get("status_change_events", [])}
+            result.assumptions.append("status-change: per-effect positive delta; linear resource-growth/event-share estimate; no cap/restriction or recursive-listener forecast")
         for child in schedule.get("children", []):
             if kind == "timer" and activations == 0:
                 # Proven outside this horizon; neither its benefit nor its
@@ -376,7 +440,10 @@ def materialize(features, *, database, environment, horizon, available=None):
                 "effect_contribution_scenario_range": contributions,
                 "unresolved_contribution_range": None if realized.unknown else {},
                 "range_unit": "effect quantities before battle modifiers; not a score confidence interval"})
-            _merge(result, realized, activations)
+            if trigger and trigger.get("phaseTypes") == ["ProduceExamPhaseType_ExamStatusChange"] and realized.status_changes:
+                result.unknown.add(f"status-change-recursive-event-dependency:{eid}")
+            _merge(result, realized, activations,
+                status_timing="timer" if kind == "timer" else "listener" if kind == "persistent" else None)
     if eligibility != 1.:
         # A conditional card's cost and benefits occur together; dropping only
         # its rewards while retaining a guaranteed cost creates a false loss.
@@ -384,4 +451,6 @@ def materialize(features, *, database, environment, horizon, available=None):
         for key in COUNTERS:
             values = getattr(result, key)
             for k in tuple(values):values[k] *= eligibility
+        for event in result.status_changes:
+            event["weight"] *= eligibility
     return result

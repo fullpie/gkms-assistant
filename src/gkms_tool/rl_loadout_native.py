@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import asdict
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -112,6 +113,7 @@ class NativeLoadoutProjector:
         references = [config_ref, self.spec["checkpoint"], self.config["policy_template"],
             self.config["engine_manifest"], self.config["provider_manifest"],
             *self.spec["semantic_sources"].values(), *self.spec["training_source_code"].values()]
+        references += list(self.spec.get('observed_source_code',{}).values())
         references += [self.spec[name] for name in ("runtime_io_equivalence", "runtime_loader_compatibility", "runtime_master_source", "projection_equivalence")
             if name in self.spec]
         if descriptor.get("loadout_reference"):
@@ -131,6 +133,13 @@ class NativeLoadoutProjector:
             *(self.root / "scripts" / name for name in ("probe_rebuilt_pc_core.py",
                 "pc_exam_initialization.py", "pc_loadout_counterfactual.py", "pc_policy_execution.py", "pc_policy_probe.py"))]
         implementation.extend(self.root / name for name in POLICY_SOURCE_PATHS)
+        for name,expected in self.spec.get('observed_source_code',{}).items():
+            if not name.startswith('gkms_tool.')or name=='gkms_tool.observed_outer_transitions':continue
+            module=importlib.util.find_spec(name)
+            if module is None or module.origin is None:raise ValueError('Observed loadout actor module is unavailable: '+name)
+            current=_reference(module.origin)
+            if current['sha256']!=expected['sha256']:raise ValueError('Observed loadout actor implementation differs: '+name)
+            implementation.append(Path(module.origin))
         code = [_reference(path) for path in implementation]
         self.execution_identity = _digest({"code": [{k: ref[k] for k in ("sha256", "bytes")} for ref in code],
             "policy": self._policy("cache-policy-identity")})
@@ -163,7 +172,7 @@ class NativeLoadoutProjector:
     def _policy(self, run_id):
         policy = deepcopy(self.template)
         names = ("checkpoint", "dataset_identity", "semantic_sources", "training_source_code", "device",
-            "runtime_io_equivalence", "runtime_master_source", "runtime_loader_compatibility", "projection_equivalence")
+            "runtime_io_equivalence", "runtime_master_source", "runtime_loader_compatibility", "projection_equivalence", "observed_source_code")
         policy["specification"] = {key: deepcopy(self.spec[key]) for key in names if key in self.spec}
         policy["run_id"] = run_id
         return policy

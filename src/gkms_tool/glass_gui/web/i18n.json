@@ -514,7 +514,9 @@
     "predictedScoreNote": "RL Value 推估（未校準）：目前分數加上模型估計的剩餘收益，不是保證或平均終局分數。",
     "terminalScoreNote": "本場演出已結算的實際分數。",
     "predictedScorePendingNote": "上次已確認狀態的 RL Value 推估（未校準），正在等待本次操作與最新觀測；不是本次動作的結果。",
-    "predictionUpdating": "更新中"
+    "predictionUpdating": "更新中",
+    "resultsMemoryGrade": "回憶卡評分",
+    "memoryGradeTooltip": "結算回憶卡的實際評級；未取得時顯示「—」。"
   },
   "en": {
     "appName": "Cultivation assistant",
@@ -1031,7 +1033,9 @@
     "predictedScoreNote": "Uncalibrated RL Value estimate: current score plus estimated remaining return, not a guaranteed or mean final score.",
     "terminalScoreNote": "Observed final score of the completed performance.",
     "predictedScorePendingNote": "Uncalibrated estimate for the last confirmed state. Waiting for this action and a fresh observation; not the result of the pending action.",
-    "predictionUpdating": "updating"
+    "predictionUpdating": "updating",
+    "resultsMemoryGrade": "Memory grade",
+    "memoryGradeTooltip": "Actual grade of the created memory. — means unavailable."
   },
   "ja": {
     "appName": "育成アシスタント",
@@ -1548,6 +1552,8 @@
     "predictedScoreNote": "未校正のRL Value推定：現在スコアと残りの収益推定の合計です。最終スコアの保証値・平均値ではありません。",
     "terminalScoreNote": "この試験の確定した実スコアです。",
     "predictedScorePendingNote": "直前に確認できた状態の未校正RL推定です。現在の操作結果と新しい観測を待っています。処理中の操作結果ではありません。",
-    "predictionUpdating": "更新中"
+    "predictionUpdating": "更新中",
+    "resultsMemoryGrade": "メモリー評価",
+    "memoryGradeTooltip": "作成されたメモリーの実際の評価。未取得の場合は「—」。"
   }
 }

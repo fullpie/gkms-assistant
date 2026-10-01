@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from collections import Counter
 from copy import deepcopy
 import json
+import hashlib
 from pathlib import Path
 
 from .runtime_economy_policy import INTENT_SCHEMA, _card_signature, _quote, _scope
@@ -134,11 +135,23 @@ def recover_economy_context(journal_directory: Path, *, limit=64):
     context = None
     for _, path in paths:
         try:
-            receipt = json.loads(path.read_text(encoding="utf-8"))
-            context = advance_economy_context(context, receipt)
+            raw = path.read_bytes()
+            receipt = json.loads(raw)
+            context = _advance_with_origin_reference(context, receipt, path, raw)
         except (OSError, ValueError, TypeError, AttributeError):
             context = None
     return context
+
+
+def _advance_with_origin_reference(context, receipt, path, raw):
+    """Retain the bytes already read; never re-query a price or submit input."""
+    advanced = advance_economy_context(context, receipt)
+    request = receipt.get('request', {})
+    if (advanced is not None and advanced is not context and advanced.get('request_id') == request.get('request_id')
+            and (request.get('target') or {}).get('action_id') in _OPEN):
+        return {**advanced, 'origin_receipt': {'path': str(Path(path).resolve()),
+            'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}}
+    return advanced
 
 
 def read_economy_receipt(journal_directory, request_id, context):
@@ -146,9 +159,11 @@ def read_economy_receipt(journal_directory, request_id, context):
     if not isinstance(request_id, str) or not request_id.isalnum():
         return context
     try:
-        receipt = json.loads((Path(journal_directory) / f"{request_id}.json").read_text(encoding="utf-8"))
+        path = Path(journal_directory) / f"{request_id}.json"
+        raw = path.read_bytes()
+        receipt = json.loads(raw)
         if receipt.get("request", {}).get("request_id") != request_id:
             return None
-        return advance_economy_context(context, receipt)
+        return _advance_with_origin_reference(context, receipt, path, raw)
     except (OSError, ValueError, TypeError, AttributeError):
         return None

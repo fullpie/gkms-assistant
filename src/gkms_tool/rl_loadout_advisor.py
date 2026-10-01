@@ -512,3 +512,9 @@ def build_private_loadout_evaluator(descriptor):
         while len(_FACTORY_CACHE) > 2:
             _FACTORY_CACHE.popitem(last=False)
         return evaluator
+
+
+def build_private_initial_loadout_selector(descriptor):
+    """Distinct learned composition policy; never impersonate native/value scores."""
+    from .private_initial_loadout import build_selector
+    return build_selector(descriptor)

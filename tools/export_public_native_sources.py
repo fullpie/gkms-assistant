@@ -13,6 +13,7 @@ import re
 import zipfile
 
 DEFINES = {'GKMS_PUBLIC_PORTABLE': True, 'GKMS_RUNTIME_COMMAND_TRACE': False,
+    'GKMS_PRIVATE_RECOMMENDED_QUERY': False,
     'GKMS_DIRECT_REPLAY_RESEARCH': False, 'GKMS_OFFICIAL_REPLAY_CORE': False,
     'GKMS_RUNTIME_LEGAL_CANDIDATE_PROBE': False, 'GKMS_RUNTIME_LEGAL_VERIFIED_PROBE': False,
     'GKMS_RUNTIME_HAND_VALIDATOR_PROBE': False, 'GKMS_RUNTIME_VALIDATOR_ABI_PROBE': False,
@@ -39,7 +40,9 @@ def select_public(raw):
                 known = DEFINES[condition] if kind == 'ifdef' else not DEFINES[condition]
             elif kind == 'if':
                 match = re.fullmatch(r'(!?)defined\((\w+)\)', condition)
-                if match and match[2] in DEFINES:
+                if condition == 'defined(GKMS_PUBLIC_PORTABLE)||defined(GKMS_PRIVATE_RECOMMENDED_QUERY)':
+                    known = True
+                elif match and match[2] in DEFINES:
                     known = DEFINES[match[2]] if not match[1] else not DEFINES[match[2]]
             if known is None and enabled: result.append(line)
             stack.append([known, known if known is not None else True])

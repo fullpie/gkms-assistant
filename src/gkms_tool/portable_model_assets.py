@@ -24,7 +24,7 @@ SCHEMA = "gkms.portable-model-assets.v1"
 ACTOR_SCHEMA = "gkms.portable-model-assets.v2"
 DEFAULT_RELATIVE = Path("assets/model_runtime")
 ENVIRONMENT_VARIABLE = "GKMS_PORTABLE_MODEL_ASSETS"
-RELEASE_MANIFEST_SHA256 = "5174fd80a0e58482d1a85bb70ec189289e24545889ccd3d86bbd4021788fe25d"
+RELEASE_MANIFEST_SHA256 = "022dde5bc5631f87db7818ce0a993508e07ffe85dd8d172ea0f215bd239c73ac"
 LEGACY_MANIFEST_SHA256 = "2a5142b977048e019c3898337642826ab421cd9b98d13c403343895a96d5d3f6"
 _SEAL = object()
 _CACHE = {}
@@ -88,7 +88,7 @@ class PortableModelAssets:
         self.manifest = json.loads(raw)
         body = self.manifest
         actor = body.get("schema") == ACTOR_SCHEMA
-        identities = ({"rl_shared_iql": "961dbeae592f891f6da7185c8ee051d2d199cc0f362c5910c48073a71317fab1"}
+        identities = ({"rl_shared_iql": "9ca3b3dcdcebf8797fe9d7a3b8f1b63830eeb977bce6983fa5615a9344c9d1bf"}
             if actor else _MODEL_SHA)
         _require(body.get("schema") in {SCHEMA, ACTOR_SCHEMA} and set(body.get("models", {})) == set(identities)
             and body.get("training_admitted") is False and body.get("raw_game_or_replay_assets_included") is False,
@@ -303,8 +303,20 @@ class PortableFeatureEncoder(IntegratedExamFeatureEncoder):
 
 
 class PortableMasterCatalog:
-    def __init__(self, encoder):
+    def __init__(self, encoder, *, reference_policy=None, runtime_owner=None, idol_card_id=None):
         self.encoder = encoder
+        self.reference_policy = deepcopy(reference_policy)
+        self.runtime_owner = runtime_owner
+        self.idol_card_id = idol_card_id
+        self.reference_material_binding = None
+        if reference_policy is not None:
+            from .runtime_live_exam_input import validate_public_reference_material_policy
+            validate_public_reference_material_policy(reference_policy,
+                checkpoint_sha256=encoder.assets.manifest['models']['rl_shared_iql']['original_model_sha256'],
+                reference_master_hash=encoder.assets.manifest['master_hash'],
+                model_manifest_sha256=encoder.assets.reference['sha256'])
+            _require(callable(runtime_owner) and isinstance(idol_card_id, str) and idol_card_id,
+                'Public reference materials require the actual native owner and selected idol')
 
     def validate_unchanged(self):
         self.encoder.assets.validate_unchanged()
@@ -319,6 +331,26 @@ class PortableMasterCatalog:
             and execution_master.get("master_update_succeeded") is True
             and execution_master.get("master_tables_initialized") is True, "Current native MasterManager is not ready")
         _pointer(execution_master.get("manager_instance_id"))
+        if self.reference_policy is not None:
+            from .runtime_live_exam_input import bind_public_reference_materials
+            context = self.runtime_owner()
+            _require(isinstance(context, Mapping) and set(context) == {'native_owner', 'engine_identity', 'expected_binding'},
+                'Public reference materials require the current native ownership context')
+            binding = bind_public_reference_materials(self.reference_policy, execution_master, context['native_owner'],
+                idol_card_id=self.idol_card_id, produce_id=produce_id, engine_identity=context['engine_identity'],
+                expected=context['expected_binding'])
+            if self.reference_material_binding is not None:
+                bind_public_reference_materials(self.reference_policy, execution_master, context['native_owner'],
+                    idol_card_id=self.idol_card_id, produce_id=produce_id, engine_identity=context['engine_identity'],
+                    expected=self.reference_material_binding)
+            bound = self.encoder.runtime_master_binding(self.reference_policy['reference_master_hash'], produce_id)
+            _require(bound is not None, 'Verified reference materials do not cover this mode')
+            bound['provenance'].update(authority='public-reference-materials-definition-coverage',
+                execution_master=deepcopy(execution_master), public_reference_materials=deepcopy(binding),
+                native_owner=deepcopy(context['native_owner']), source_equivalence_verified=False,
+                reference_lookup_only=True, unknown_definition_policy='stop', training_admitted=False)
+            self.reference_material_binding = deepcopy(binding)
+            return bound
         bound = self.encoder.runtime_master_binding(execution_master.get("execution_master_version"), produce_id)
         _require(bound is not None, "Current Master is not included in this portable package")
         _require(execution_master.get("execution_master_hash") in (None, bound["source_master_hash"]),

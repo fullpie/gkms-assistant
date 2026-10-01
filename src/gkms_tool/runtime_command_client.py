@@ -30,6 +30,9 @@ READ_COMMANDS = frozenset({"status", "read_snapshot", "read_inventory", "read_mo
     "official_replay.inspect", "official_replay.poll", "research.recommended.start", "research.recommended.poll", "research.recommended.ranges"})
 WRITE_COMMANDS = frozenset({"exam.play", "exam.drink", "exam.end_turn", "loadout.apply", "outer.action",
     "official_replay.prepare", "official_replay.start", "official_replay.release"})
+ERROR_RETURN_CAPABILITY = 'error.return_title.continuation'
+ERROR_RETURN_JOURNAL = 'pending_error_return_title.json'
+ERROR_RETURN_PARENTS = frozenset({'exam.play', 'exam.drink', 'exam.end_turn', 'loadout.apply', 'outer.action'})
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_RESULT_BYTES = 32 * 1024 * 1024
@@ -145,9 +148,11 @@ class RuntimeCommandRequest:
         if self.continuation_of is not None:
             _identifier(self.continuation_of, "continuation_of")
             if (self.command != "outer.action" or not self.target or
-                    self.target.get("exam_continuation") is not True or
-                    not isinstance(self.target.get("parent_context"), Mapping)):
-                raise RuntimeCommandProtocolError("continuation requires an observed Exam selector target")
+                    self.continuation_of == self.request_id or not (
+                        self.target.get('action_id') == 'error.return_title' or
+                        self.target.get("exam_continuation") is True and
+                        isinstance(self.target.get("parent_context"), Mapping))):
+                raise RuntimeCommandProtocolError("continuation requires an observed Exam selector or return-title target")
         if self.command == "exam.play":
             self._require_slot()
             if not isinstance((self.target or {}).get("card_guid"), str) or not self.target["card_guid"]:
@@ -262,6 +267,14 @@ class RuntimeCommandClient:
             raise RuntimeCommandUnavailable("DLL process generation changed before submission")
         if request.command != "status" and request.command not in status["capabilities"]:
             raise RuntimeCommandUnavailable(f"DLL capability is unavailable: {request.command}")
+        recovery_path = self.root / ERROR_RETURN_JOURNAL
+        recovery = _read_object(recovery_path) if recovery_path.is_file() else None
+        if request.command in WRITE_COMMANDS and recovery is not None:
+            if (recovery.get('schema') != 'gkms.runtime-error-return-title.v1'
+                    or recovery.get('request') != request.to_dict()
+                    or recovery.get('phase') != 'submitting'
+                    or ERROR_RETURN_CAPABILITY not in status['capabilities']):
+                raise RuntimeCommandUnavailable('return-title interruption owns the input lane; no ordinary action was submitted')
         raw = json.dumps(request.to_dict(), ensure_ascii=False, allow_nan=False,
                          separators=(",", ":")).encode("utf-8")
         if len(raw) > _MAX_REQUEST_BYTES:
@@ -300,10 +313,26 @@ class RuntimeCommandClient:
                     parent = _read_object(self.root / "pending_action.json", limit=_MAX_REQUEST_BYTES)
                 except FileNotFoundError as exc:
                     raise RuntimeCommandUnavailable("Exam continuation has no pending parent action") from exc
+                error_return = (request.target or {}).get('action_id') == 'error.return_title'
                 if (parent.get("request_id") != request.continuation_of or
                         parent.get("session_generation") != request.session_generation or
-                        parent.get("command") not in {"exam.play", "exam.drink", "exam.end_turn"}):
-                    raise RuntimeCommandUnavailable("Exam continuation does not belong to the pending action")
+                        parent.get("command") not in (ERROR_RETURN_PARENTS if error_return else
+                            {"exam.play", "exam.drink", "exam.end_turn"})):
+                    raise RuntimeCommandUnavailable("Continuation does not belong to the pending action")
+                if error_return:
+                    if (ERROR_RETURN_CAPABILITY not in status['capabilities'] or recovery is None
+                            or recovery.get('parent') != parent):
+                        raise RuntimeCommandUnavailable('return-title continuation requires its exact retained parent and native capability')
+                    receipt = _read_object(self.root / 'results' / (request.continuation_of + '.json'))
+                    command = receipt.get('command', (receipt.get('action') or {}).get('command'))
+                    if (receipt.get('schema') != RESULT_SCHEMA or receipt.get('request_id') != request.continuation_of
+                            or receipt.get('session_generation') != request.session_generation
+                            or receipt.get('status') not in ('submitted', 'unknown') or command != parent['command']
+                            or (receipt.get('action') or {}).get('command', command) != command
+                            or 'settled' in receipt and receipt['settled'] is not False
+                            or receipt.get('status') == 'unknown' and receipt.get('error_code') !=
+                                ('loadout-readback-unproven' if command == 'loadout.apply' else 'native-invocation-outcome-unknown')):
+                        raise RuntimeCommandUnavailable('original native handler has no matching durable dispatch result')
         elif request.command in WRITE_COMMANDS:
             # The claim spans all domains and survives the controller mutex
             # being released after a timeout. No Outer/loadout action may
@@ -320,10 +349,15 @@ class RuntimeCommandClient:
                 except FileExistsError as exc:
                     pending = _read_object(self.root / "pending_action.json", limit=_MAX_REQUEST_BYTES)
                     if pending.get("request_id") == request.request_id:
-                        raise RuntimeCommandPending(request, "already submitted; await the existing receipt") from exc
-                    raise RuntimeCommandUnavailable(
-                        f"another DLL action is pending: {pending.get('command')} ({pending.get('request_id')})"
-                    ) from exc
+                        unpublished_recovery = (recovery is not None and pending == request.to_dict()
+                            and not any((self.root / folder / (request.request_id + '.json')).exists()
+                                for folder in ('requests', 'inbox', 'running', 'results')))
+                        if not unpublished_recovery:
+                            raise RuntimeCommandPending(request, "already submitted; await the existing receipt") from exc
+                    else:
+                        raise RuntimeCommandUnavailable(
+                            f"another DLL action is pending: {pending.get('command')} ({pending.get('request_id')})"
+                        ) from exc
         # A durable host descriptor is also the atomic idempotency reservation.
         # It persists on timeout/restart so a caller cannot re-enqueue a mutation.
         requests = self.root / "requests"
@@ -358,6 +392,12 @@ class RuntimeCommandClient:
         if request.command not in WRITE_COMMANDS or request.continuation_of is not None:
             return
         with _claim_lock():
+            recovery_path = self.root / ERROR_RETURN_JOURNAL
+            if recovery_path.is_file():
+                recovery = _read_object(recovery_path)
+                owner = recovery.get('parent') or recovery.get('request') or {}
+                if owner.get('request_id') == request.request_id and recovery.get('phase') != 'title-confirmed':
+                    raise RuntimeCommandUnavailable('original action stays owned until return-title is confirmed')
             path = self.root / "pending_action.json"
             try:
                 pending = _read_object(path, limit=_MAX_REQUEST_BYTES)

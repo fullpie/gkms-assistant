@@ -319,6 +319,13 @@ def _grow(features: _Features, grow: Mapping[str, Any], master: MasterCard, data
         resource = {"ReviewAdd": "review", "BlockAdd": "block", "AggressiveAdd": "motivation", "FullPowerPointAdd": "full_power"}[kind]
         if features.gains[resource] > 0:
             features.gains[resource] += value
+            events = [event for event in features.status_changes if event["resource"] == resource]
+            if len(events) == 1:
+                events[0]["base_difference"] += value
+            elif value:
+                # Do not invent an extra status event or guess which nested
+                # effect a native customization rewrites.
+                features.status_change_unknown.add(resource)
         else:
             features.unknown.add(f"grow-target-not-resolved:{grow.get('id', kind)}")
     elif kind == "LessonDependExamReviewAdd":
@@ -488,6 +495,7 @@ def _materialized_features(deck, context, database, master_dir, drink_ids=()):
     environment = {"stocks": stocks, "category_shares": {k: v / n for k, v in shares.items()},"deck_count":n,
         "plays_per_turn": 1 + min(.75, sum(x.extra_play for x in raw) / n)}
     features = []
+    local_environments = []
     for f in raw:
         # A Lost installer cannot trigger itself after leaving the hand. Its
         # category is removed from the future-event opportunity pool.
@@ -496,9 +504,38 @@ def _materialized_features(deck, context, database, master_dir, drink_ids=()):
         total_future = max(1, n - int(f.lost))
         local = {**environment, "category_shares": {k: v / total_future for k, v in future_shares.items()},
             "source_uses": min(1. if f.lost else 3., baseline_uses)}
-        features.append(materialize(f, database=database, environment=local, horizon=horizon))
-    consumables = [materialize(f, database=database, environment=environment, horizon=horizon,
+        local_environments.append(local)
+    # Resolve existing finite timer/conditional/card-create IR to derive
+    # opportunities. Listeners cannot manufacture their own event pool.
+    empty_events = {"status_change_events": (), "status_change_unknown": ()}
+    primed = [materialize(f, database=database, environment={**local, **empty_events}, horizon=horizon)
+        for f, local in zip(raw, local_environments)]
+    prime_drinks = [materialize(f, database=database, environment={**environment, **empty_events}, horizon=horizon,
         available=max(0, horizon - 1)) for f in drinks]
+    motivation = .5 * (sum(f.gains.get("motivation", 0) * min(1. if f.lost else 3., baseline_uses) for f in primed)
+        + sum(f.gains.get("motivation", 0) for f in prime_drinks))
+    unmodeled = set().union(*(f.status_change_unknown for f in (*primed, *prime_drinks)))
+
+    def event_pool(owner=None):
+        events = []
+        for index, f in enumerate((*primed, *prime_drinks)):
+            uses = min(1. if f.lost else 3., baseline_uses) if index < len(raw) else 1.
+            for event in f.status_changes:
+                count = max(0., uses - 1.) if owner == index and event["timing"] == "direct" else uses
+                frequency = count * event["weight"] / max(1., horizon)
+                if frequency <= 0:continue
+                base, multiplier = event["base_difference"], event["motivation_multiplier"]
+                events.append({"effect_id":event["effect_id"], "effect_type":event["effect_type"],
+                    "difference_range":sorted([base + multiplier * motivation, base + 2 * multiplier * motivation]),
+                    "events_per_turn":frequency,"source_index":index,"timing":event["timing"]})
+        return events
+
+    for index, (f, local) in enumerate(zip(raw, local_environments)):
+        features.append(materialize(f, database=database, environment={**local,
+            "status_change_events":event_pool(index),"status_change_unknown":unmodeled}, horizon=horizon))
+    consumables = [materialize(f, database=database, environment={**environment,
+        "status_change_events":event_pool(len(raw)+i),"status_change_unknown":unmodeled}, horizon=horizon,
+        available=max(0, horizon - 1)) for i, f in enumerate(drinks)]
     return features, consumables
 
 
@@ -672,6 +709,7 @@ def evaluate_deck_delta(before_deck, after_deck, context, *, database=DEFAULT_DA
     digest = hashlib.sha256(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
     method = "semantic-deck-horizon-v1"
     mutation_unknown, shared_unknown, term_evidence = set(), set(), []
+    shared_unknown_audit = []
     if model_value is not None:
         base = _number(model_value(before, context), "model before value")
         updated = _number(model_value(after, context), "model after value")
@@ -692,6 +730,17 @@ def evaluate_deck_delta(before_deck, after_deck, context, *, database=DEFAULT_DA
                 if old_counts[issue] != new_counts[issue])
             shared_unknown.update(issue for issue in old_counts.keys() & new_counts.keys()
                 if old_counts[issue] == new_counts[issue])
+            for issue in old_counts.keys() & new_counts.keys():
+                if old_counts[issue] != new_counts[issue]:continue
+                # Equal errors are not an independence proof. An opaque effect
+                # may read resources, costs, draw access or another card's
+                # output. Only identical normalized inputs establish no change.
+                independent = before == after
+                shared_unknown_audit.append({"issue":issue,
+                    "stage":(outlook.get("next_exam") or {}).get("stage"),
+                    "independent":independent,
+                    "reason":"identical-normalized-deck-and-context" if independent else "unknown-dependency-read-set"})
+                if not independent:mutation_unknown.add(issue)
             term_evidence.append({"stage": (outlook.get("next_exam") or {}).get("stage"),
                 "before": old.get("card_features", []), "after": new.get("card_features", []),
                 "effect_settings": old.get("effect_settings"),
@@ -755,6 +804,7 @@ def evaluate_deck_delta(before_deck, after_deck, context, *, database=DEFAULT_DA
     valuation = {"schema": "gkms.outer-effect-valuation.v2", "unit": "heuristic-deck-utility",
         "predicts_exam_score": False, "comparison_ready": comparison_ready,
         "mutation_unresolved_effects": sorted(mutation_unknown), "shared_context_unresolved_effects": sorted(shared_unknown),
+        "shared_unknown_dependency_audit":shared_unknown_audit,
         "partial_utility_delta": raw_delta, "uncertain_destructive_gain_not_authorized": destructive_or_paid and not comparison_ready,
         "effect_evidence": term_evidence}
     if destructive_or_paid and not comparison_ready:
@@ -795,19 +845,30 @@ def evaluate_drink_inventory_delta(deck, before_drinks, added_drinks, context, *
     owned_unresolved = Counter((row["drink_id"], issue) for row in detail.get("drink_features", []) for issue in row["unresolved"])
     best_key = None
     best_unresolved = Counter()
+    best_shared_unknown = []
+    before_unknown = Counter(("card:" + row["card_id"], issue) for row in detail.get("card_features", []) for issue in row["unresolved"])
+    before_unknown.update(("drink:" + identity, issue) for identity, issue in owned_unresolved.elements())
     for subset in subsets:
         value, info, gaps, _ = _value(cards, context, database, master_dir, [all_ids[index] for index in subset])
         unknown.update(gaps)
         retained_unresolved = Counter((row["drink_id"], issue) for row in info.get("drink_features", []) for issue in row["unresolved"])
         unresolved_discard = tuple(sorted((owned_unresolved - retained_unresolved).elements()))
+        after_unknown = Counter(("card:" + row["card_id"], issue) for row in info.get("card_features", []) for issue in row["unresolved"])
+        after_unknown.update(("drink:" + identity, issue) for identity, issue in retained_unresolved.elements())
+        same_inventory = tuple(all_ids[index] for index in subset) == tuple(before_drinks)
+        shared_affected = sorted(identity for identity in before_unknown.keys() & after_unknown.keys()
+            if before_unknown[identity] == after_unknown[identity] and not same_inventory)
         # Existing unknown benefits cannot become zero simply because another
         # bottle has an easily modeled effect. Preserve that choice as partial.
-        key = (not unresolved_discard, value)
+        key = (not unresolved_discard and not shared_affected, not unresolved_discard, value)
         portfolio_evidence.append({"retained_indexes": list(subset), "partial_utility": value,
-            "discarded_unresolved_benefits": unresolved_discard, "effect_evidence": info.get("drink_features", [])})
+            "discarded_unresolved_benefits": unresolved_discard,
+            "shared_unknown_dependency_unproven":shared_affected,
+            "effect_evidence": info.get("drink_features", [])})
         if best_key is None or key > best_key:
             best_key = key
             best_unresolved = retained_unresolved
+            best_shared_unknown = shared_affected
             best, retained, after_detail = value, tuple(subset), info
     payload = {**context, "drink_inventory_before": list(before_drinks), "reward_drinks": list(added_drinks)}
     digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
@@ -822,6 +883,7 @@ def evaluate_drink_inventory_delta(deck, before_drinks, added_drinks, context, *
         notes.append("unscored drink/deck mechanics are explicitly listed")
     mutation_unresolved = sorted(identity for identity in owned_unresolved.keys() | best_unresolved.keys()
         if owned_unresolved[identity] != best_unresolved[identity])
+    mutation_unresolved = sorted(set(mutation_unresolved) | set(best_shared_unknown))
     comparison_ready = not mutation_unresolved
     partial_delta = best - before
     paid_unresolved = not comparison_ready and context.get("produce_point_cost", 0) > 0
@@ -831,6 +893,7 @@ def evaluate_drink_inventory_delta(deck, before_drinks, added_drinks, context, *
         valuation={"schema": "gkms.outer-effect-valuation.v2", "unit": "heuristic-deck-utility", "predicts_exam_score": False,
             "comparison_ready": comparison_ready, "partial_utility_delta": partial_delta,
             "mutation_unresolved_effects": mutation_unresolved,
+            "shared_unknown_dependency_unproven":best_shared_unknown,
             "uncertain_purchase_gain_not_authorized": paid_unresolved,
             "portfolio_evidence": portfolio_evidence, "unresolved_owned_benefit_preserved": bool(owned_unresolved),
             "effect_evidence": after_detail.get("drink_features", []), "effect_settings": after_detail.get("effect_settings")})

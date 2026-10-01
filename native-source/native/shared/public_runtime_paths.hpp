@@ -12,6 +12,11 @@
 #error Public portable builds cannot include research adapters or optional probes.
 #endif
 
+#if defined(GKMS_PRIVATE_RECOMMENDED_QUERY) && (defined(GKMS_PUBLIC_PORTABLE) || defined(GKMS_RUNTIME_COMMAND_TRACE) || \
+    defined(GKMS_DIRECT_REPLAY_RESEARCH) || defined(GKMS_OFFICIAL_REPLAY_CORE))
+#error Private recommended-query builds exclude public release and other research profiles.
+#endif
+
 namespace gkms::public_runtime_paths {
 
 inline std::filesystem::path state_root() {

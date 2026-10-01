@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -18,6 +19,7 @@ from typing import Any
 from .runtime_command_client import (
     RuntimeCommandClient, RuntimeCommandError, RuntimeCommandPending,
     RuntimeCommandProtocolError, RuntimeCommandRequest,
+    ERROR_RETURN_CAPABILITY, ERROR_RETURN_JOURNAL, ERROR_RETURN_PARENTS,
 )
 from .runtime_exam_executor import _controller_lease
 from .runtime_outer_behavior_prior import DEFAULT_WEEKLY_BC_PROVIDER
@@ -190,8 +192,227 @@ class RuntimeOuterGateway(RuntimeOuterReader):
     def pending_path(self):
         return self.client.root / "pending_outer.json"
 
+    def return_to_title_if_needed(self, snapshot=None):
+        """Interrupt through the game's current error callback; retain its parent.
+
+        A durable native result proves only that the original handler returned.
+        Its managed task/transaction remains unknown. The existing input claim
+        stays held while this one child closes the error and reaches Title.
+        """
+        with self.lease(self.timeout):
+            journal = self.client.root / ERROR_RETURN_JOURNAL
+            if journal.exists():
+                record = self._interruption_document(journal)
+                if record.get('phase') == 'submitting':
+                    child = self._interruption_request(record['request'])
+                    # Requests descriptors are durable and never consumed. If
+                    # none exists anywhere, a crash preceded publication; reuse
+                    # the reserved ID, never create a replacement child.
+                    if not any((self.client.root / folder / (child.request_id + '.json')).exists()
+                            for folder in ('requests', 'inbox', 'running', 'results')):
+                        try:
+                            self.client.submit(child)
+                        except RuntimeCommandPending:
+                            pass
+                        except RuntimeCommandError as error:
+                            return RuntimeOuterOutcome('pending', 'reserved return-title publication remains blocked: ' + str(error),
+                                request_id=child.request_id)
+                return self._settle_return_title(record)
+            status = self.client.read_status()
+            if ERROR_RETURN_CAPABILITY not in status.get('capabilities', ()):
+                return None
+            current = snapshot if snapshot is not None else self.read()
+            if current.raw.get('surface') != 'error':
+                return None
+            actions = current.actions
+            if (current.raw.get('screen_type') != 'ErrorSheetPresenter'
+                    or (current.raw.get('ui_state') or {}).get('closing') is not False
+                    or len(actions) != 1 or actions[0].get('action_id') != 'error.return_title'):
+                return RuntimeOuterOutcome('pending', 'native error has no unique ready return-title callback', current)
+            target = dict(actions[0]['target'])
+            required = {'action_id', 'sheet_instance_id', 'prompt_digest', 'button_source',
+                'button_instance_id', 'callback_instance_id'}
+            error = (current.raw.get('ui_state') or {}).get('error') or {}
+            if (set(target) != required or target.get('action_id') != 'error.return_title'
+                    or target.get('sheet_instance_id') != current.raw.get('screen_instance_id')
+                    or target.get('prompt_digest') != error.get('digest')
+                    or not isinstance(target.get('prompt_digest'), str) or len(target['prompt_digest']) != 64
+                    or any(c not in '0123456789abcdef' for c in target['prompt_digest'])
+                    or target.get('button_source') not in ('cancel', 'execute')
+                    or any(not isinstance(target.get(key), str) or target[key] in ('', '0', '0x0')
+                        for key in ('sheet_instance_id', 'button_instance_id', 'callback_instance_id'))):
+                return RuntimeOuterOutcome('pending', 'native return-title ownership evidence is incomplete', current)
+            claim_path = self.client.root / 'pending_action.json'
+            parent = self._interruption_document(claim_path) if claim_path.exists() else None
+            receipt = None
+            if parent is not None:
+                request = self._interruption_request(parent)
+                if (request.command not in ERROR_RETURN_PARENTS or request.continuation_of is not None
+                        or request.session_generation != current.session_generation):
+                    return RuntimeOuterOutcome('pending', 'return-title cannot interrupt an unrelated input owner', current)
+                # Read the native durable receipt without poll_result's ordinary
+                # rejected-parent cleanup. This branch never releases it early.
+                receipt_path = self.client.root / 'results' / (request.request_id + '.json')
+                if not receipt_path.is_file():
+                    return RuntimeOuterOutcome('pending', 'original native handler has no durable dispatch result', current)
+                receipt = self._interruption_document(receipt_path)
+                command = receipt.get('command', (receipt.get('action') or {}).get('command'))
+                if (receipt.get('schema') != 'gkms.runtime-command-result.v1'
+                        or receipt.get('request_id') != request.request_id
+                        or receipt.get('session_generation') != current.session_generation
+                        or receipt.get('status') not in ('submitted', 'unknown') or command != request.command
+                        or (receipt.get('action') or {}).get('command', command) != command
+                        or 'settled' in receipt and receipt['settled'] is not False
+                        or receipt.get('status') == 'unknown' and receipt.get('error_code') !=
+                            ('loadout-readback-unproven' if command == 'loadout.apply' else 'native-invocation-outcome-unknown')):
+                    return RuntimeOuterOutcome('pending', 'original native dispatch result does not bind the input owner', current)
+            journals = {}
+            for name in ('pending_outer.json', 'pending_exam.json', 'pending_loadout.json'):
+                path = self.client.root / name
+                if not path.exists():
+                    continue
+                raw = path.read_bytes()
+                if len(raw) > 32 * 1024 * 1024:
+                    raise RuntimeCommandProtocolError('original input journal exceeds its bounded recovery size')
+                document = json.loads(raw)
+                owned = document.get('request', document)
+                if parent is None or owned != parent:
+                    return RuntimeOuterOutcome('pending', 'original domain journal does not match the retained input claim', current)
+                journals[name] = {'sha256': hashlib.sha256(raw).hexdigest(), 'source_text': raw.decode('utf-8')}
+            if any((self.client.root / name).exists() for name in ('pending_recommended_query.json', 'pending_research_collection.json')):
+                return RuntimeOuterOutcome('pending', 'research query owner remains unresolved; return-title was not submitted', current)
+            if self.cancelled is not None and self.cancelled():
+                return RuntimeOuterOutcome('pending', 'cancelled before return-title publication', current)
+            child = self.client.make_request('outer.action', expected_revision=current.revision, target=target,
+                continuation_of=None if parent is None else parent['request_id'])
+            if child.session_generation != current.session_generation:
+                return RuntimeOuterOutcome('pending', 'game process changed before return-title publication', current)
+            record = {'schema': 'gkms.runtime-error-return-title.v1', 'phase': 'submitting',
+                'request': child.to_dict(), 'parent': parent, 'parent_result': receipt,
+                'parent_journals': journals, 'before': dict(current.raw),
+                'source_path': str(current.source_path), 'original_result': 'unknown',
+                'original_action_replayed': False, 'original_action_success_claimed': False}
+            # Persist before entering submit. A restarted owner polls this same
+            # child even if publication was interrupted; it never retries it.
+            atomic_write(journal, canonical_json_bytes(record))
+            try:
+                self.client.submit(child)
+            except RuntimeCommandPending:
+                pass
+            except RuntimeCommandError as error:
+                return RuntimeOuterOutcome('pending', 'return-title publication blocked: ' + str(error), current, child.request_id)
+            return self._settle_return_title(record)
+
+    @staticmethod
+    def _interruption_document(path):
+        path = Path(path)
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 64 * 1024 * 1024:
+            raise RuntimeCommandProtocolError('bounded original return-title journal required')
+        value = json.loads(path.read_bytes())
+        if not isinstance(value, dict):
+            raise RuntimeCommandProtocolError('return-title journal must be an object')
+        return value
+
+    @staticmethod
+    def _interruption_request(raw):
+        return RuntimeCommandRequest(raw['request_id'], raw['session_generation'], raw['command'],
+            raw.get('expected_revision'), raw.get('target'), raw.get('continuation_of'))
+
+    def _settle_return_title(self, record):
+        if (record.get('schema') != 'gkms.runtime-error-return-title.v1'
+                or record.get('phase') not in ('submitting', 'title-confirmed')):
+            raise RuntimeCommandProtocolError('return-title interruption journal differs')
+        child = self._interruption_request(record['request'])
+        if child.command != 'outer.action' or (child.target or {}).get('action_id') != 'error.return_title':
+            raise RuntimeCommandProtocolError('return-title journal has a different child action')
+        if record['phase'] == 'title-confirmed':
+            return self._finish_return_title(record)
+        owner = record.get('parent') or record['request']
+        claim_path = self.client.root / 'pending_action.json'
+        if not claim_path.is_file() or self._interruption_document(claim_path) != owner:
+            return RuntimeOuterOutcome('pending', 'return-title input claim changed; original journals retained', request_id=child.request_id)
+        deadline = self.monotonic() + self.timeout
+        while True:
+            if self.client.read_status()['session_generation'] != child.session_generation:
+                return RuntimeOuterOutcome('pending', 'game process changed during return-title interruption', request_id=child.request_id)
+            try:
+                receipt = self.client.poll_result(child)
+            except RuntimeCommandError as error:
+                return RuntimeOuterOutcome('pending', 'return-title receipt remains unresolved: ' + str(error), request_id=child.request_id)
+            if receipt is not None:
+                if receipt.status == 'rejected':
+                    return RuntimeOuterOutcome('pending', 'return-title callback rejected; original operation remains unresolved', request_id=child.request_id)
+                if receipt.status in ('submitted', 'unknown'):
+                    current = self.read()
+                    if current.session_generation != child.session_generation:
+                        return RuntimeOuterOutcome('pending', 'game process changed after return-title callback', request_id=child.request_id)
+                    if (current.raw.get('surface') == 'navigation' and current.raw.get('screen_type') == 'TitlePresenter'
+                            and current.raw.get('busy') is False and current.raw.get('actions_complete') is True):
+                        record = {**record, 'phase': 'title-confirmed', 'after': dict(current.raw),
+                            'after_source_path': str(current.source_path), 'child_result': dict(receipt.raw)}
+                        atomic_write(self.client.root / ERROR_RETURN_JOURNAL, canonical_json_bytes(record))
+                        return self._finish_return_title(record)
+            if self.cancelled is not None and self.cancelled() or self.monotonic() >= deadline:
+                return RuntimeOuterOutcome('pending', 'waiting for the same return-title child to reach Title', request_id=child.request_id)
+            self.sleep(min(.25, max(0., deadline - self.monotonic())))
+
+    def _finish_return_title(self, record):
+        child = self._interruption_request(record['request'])
+        after = RuntimeOuterSnapshot(child.session_generation, record['after'], Path(record['after_source_path']))
+        if (record.get('phase') != 'title-confirmed' or after.raw.get('surface') != 'navigation'
+                or after.raw.get('screen_type') != 'TitlePresenter' or after.raw.get('busy') is not False
+                or after.raw.get('actions_complete') is not True):
+            raise RuntimeCommandProtocolError('interruption cleanup requires its observed Title boundary')
+        owner = record.get('parent') or record['request']
+        expected_parent = (record.get('parent') or {}).get('request_id')
+        receipt = self._interruption_document(self.client.root / 'results' / (child.request_id + '.json'))
+        if (child.continuation_of != expected_parent or receipt != record.get('child_result')
+                or receipt.get('status') not in ('submitted', 'unknown')
+                or receipt.get('session_generation') != child.session_generation):
+            raise RuntimeCommandProtocolError('interruption cleanup lost its exact native child receipt')
+        claim_path = self.client.root / 'pending_action.json'
+        archive = self.client.root / 'completed_interruptions' / (child.request_id + '.json')
+        if not claim_path.exists() and not archive.exists():
+            raise RuntimeCommandProtocolError('interruption claim disappeared before durable archival')
+        if claim_path.exists() and self._interruption_document(claim_path) != owner:
+            raise RuntimeCommandProtocolError('another input owns the lane; interruption cleanup refused')
+        journals = record.get('parent_journals')
+        if not isinstance(journals, dict) or set(journals) - {'pending_outer.json', 'pending_exam.json', 'pending_loadout.json'}:
+            raise RuntimeCommandProtocolError('interruption journal names an unexpected source')
+        for name, source in journals.items():
+            if hashlib.sha256(source['source_text'].encode('utf-8')).hexdigest() != source['sha256']:
+                raise RuntimeCommandProtocolError('preserved original journal bytes changed')
+            path = self.client.root / name
+            if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() != source['sha256']:
+                raise RuntimeCommandProtocolError('original pending journal changed; retain its owner')
+        outcome = {'status': 'interrupted', 'reason': 'game-owned-error-return-title',
+            'original_result': 'unknown', 'original_action_success_claimed': False,
+            'original_action_replayed': False, 'returned_to_title': True,
+            'recovery_request': record['request'], 'after': dict(after.raw)}
+        def preserve(path, document):
+            raw = canonical_json_bytes(document)
+            if path.exists():
+                if path.read_bytes() != raw:
+                    raise RuntimeCommandProtocolError('interruption archive differs; preserve existing evidence')
+            else:
+                atomic_write(path, raw)
+        preserve(archive, {**record, 'outcome': outcome})
+        for name, source in journals.items():
+            original = json.loads(source['source_text'])
+            folder = {'pending_outer.json': 'completed_outer', 'pending_exam.json': 'completed_exam',
+                'pending_loadout.json': 'completed_loadout'}[name]
+            preserve(self.client.root / folder / (owner['request_id'] + '.json'), {**original, 'outcome': outcome})
+            (self.client.root / name).unlink(missing_ok=True)
+        self.client.release_action(self._interruption_request(owner))
+        (self.client.root / ERROR_RETURN_JOURNAL).unlink(missing_ok=True)
+        return RuntimeOuterOutcome('interrupted',
+            'returned to Title; original action outcome is unknown; stop and reread saved state before any new run',
+            after, child.request_id)
+
     def execute(self, before: RuntimeOuterSnapshot, target: Mapping[str, object]) -> RuntimeOuterOutcome:
         with self.lease(self.timeout):
+            if (self.client.root / ERROR_RETURN_JOURNAL).exists():
+                return self.return_to_title_if_needed()
             if self.cancelled is not None and self.cancelled() and not self.pending_path.exists():
                 return RuntimeOuterOutcome("rejected", "cancelled before Outer input")
             if self.pending_path.exists():
@@ -204,6 +425,9 @@ class RuntimeOuterGateway(RuntimeOuterReader):
                     or (before.raw.get("ui_state") or {}).get("parent_instance_id") != target["parent_instance_id"]):
                 return RuntimeOuterOutcome("rejected", "memory creation requires its bound native result presenter")
             latest = self.read()
+            interruption = self.return_to_title_if_needed(latest)
+            if interruption is not None:
+                return interruption
             if latest.session_generation != before.session_generation:
                 return RuntimeOuterOutcome("rejected", "game process changed before Outer input")
             if latest.revision != before.revision:
@@ -238,6 +462,9 @@ class RuntimeOuterGateway(RuntimeOuterReader):
 
     def resume(self) -> RuntimeOuterOutcome:
         with self.lease(self.timeout):
+            interruption = self.return_to_title_if_needed()
+            if interruption is not None:
+                return interruption
             if not self.pending_path.exists():
                 return RuntimeOuterOutcome("replan", "no pending native Outer operation", self.read())
             pending = json.loads(self.pending_path.read_text(encoding="utf-8"))
@@ -277,6 +504,9 @@ class RuntimeOuterGateway(RuntimeOuterReader):
                     if after.session_generation != before.session_generation:
                         return RuntimeOuterOutcome("pending", "game process changed during Outer action", request_id=request.request_id)
                     if after.raw.get("surface") == "error":
+                        interruption = self.return_to_title_if_needed(after)
+                        if interruption is not None:
+                            return interruption
                         error = (after.raw.get("ui_state") or {}).get("error") or {}
                         return RuntimeOuterOutcome("pending", "native game error during operation: " +
                             str(error.get("description", "unconfirmed transaction")), after, request.request_id)
@@ -390,6 +620,9 @@ def choose_runtime_outer_action(
     deck_plan_owner=None,
     operation_context=None,
     weekly_bc_provider_path=None,
+    learned_outer_policy=None,
+    require_learned_confirmation=False,
+    require_learned_strategy=False,
 ) -> tuple[Mapping[str, object] | None, Mapping[str, object]]:
     """Choose from native candidates using current state and mode rules."""
     from .runtime_presentation import native_presentation_wait
@@ -436,7 +669,8 @@ def choose_runtime_outer_action(
                           "reason": "等待親密度提升通知的原生確認按鈕"}
         return notices[0]["target"], {"source": "native-dearness-notice",
                                      "reason": "確認親密度提升通知"}
-    if native.raw["screen_type"] == "ProduceRefreshConfirmSheetPresenter":
+    if (native.raw["screen_type"] == "ProduceRefreshConfirmSheetPresenter"
+            and not getattr(learned_outer_policy,'observed_actor',False)):
         # ScheduleScreenPresenter.RefreshRequestAsync opens this exact sheet
         # with the actual recovery/limit preview. Confirm its normal button;
         # no week/archetype-specific navigation or resource mutation is needed.
@@ -523,6 +757,21 @@ def choose_runtime_outer_action(
         return foreground[0]["target"], {"source": "native-foreground-effect"}
     if len(foreground) > 1:
         raise RuntimeCommandError("native effect owner exposes ambiguous confirmation targets")
+    if learned_outer_policy is not None:
+        if (learned_outer_policy.context['produce_id'] != produce_id
+                or learned_outer_policy.context['idol_card_id'] != idol_card_id):
+            raise RuntimeCommandError('learned outer choice belongs to another requested idol/mode')
+        learned = learned_outer_policy.choose(native, operation_context=operation_context)
+        if learned is not None:
+            return learned
+    if require_learned_strategy:
+        from .runtime_rl_outer_policy import requires_outer_comparison
+        if requires_outer_comparison(native.raw):
+            return None, {'source':'shared-outer-value','status':'model-unavailable',
+                'reason':'RL strategy is required at this existing decision entry',
+                'model_applied':False,'legacy_rule_fallback':False,
+                'unavailable':[{'reason':'required-rl-strategy-provider-not-ready',
+                    'surface':native.raw.get('surface'),'family':(native.raw.get('ui_state')or{}).get('family')}]}
     from .runtime_card_choice_policy import choose_runtime_card_ui_action
     from .runtime_outer_policy import build_runtime_outer_context, choose
 
@@ -548,7 +797,10 @@ def choose_runtime_outer_action(
             return {**context, "training_budget": build_training_budget(native.raw, context)}
 
         target, detail = choose_runtime_economy_action(native, deck_context=economy_deck_context,
-                                                     operation_context=operation_context)
+            operation_context=operation_context,
+            **({'learned_confirmation': learned_outer_policy.approve_economy_confirmation}
+               if learned_outer_policy is not None else
+               {'learned_confirmation': lambda *_: None} if require_learned_confirmation else {}))
         if target is None and detail.get("status") not in {"waiting"}:
             raise RuntimeCommandError("native economy policy gap: " + str(detail.get("reason")))
         return target, detail
@@ -727,6 +979,138 @@ def _preflight_start_recorder(client, session_generation):
     return native_status
 
 
+def _reference_trial_owner(native_status, session_generation, run_id=None):
+    pid = native_status.get('pid')
+    if (type(pid) is not int or pid <= 0
+            or native_status.get('session_generation') != session_generation):
+        raise RuntimeCommandError('Reference trial requires the current native process/session owner')
+    return {'game_pid': pid, 'session_generation': session_generation, 'run_id': run_id}
+
+
+def _reference_trial_claim_path(authorization):
+    from .run_identity import DEFAULT_RUN_ROOT
+    identity = authorization.get('authorization_id')
+    if (not isinstance(identity, str) or len(identity) != 32
+            or any(c not in '0123456789abcdef' for c in identity)):
+        raise RuntimeCommandError('Reference trial authorization identity is invalid')
+    return DEFAULT_RUN_ROOT / 'runtime_reference_trials' / (identity + '.json')
+
+
+def _check_reference_trial_owner(authorization, owner, *, produce_id, idol_card_id):
+    if (authorization.get('user_authorized') is not True or authorization.get('max_runs') != 1
+            or authorization.get('source_equivalence_verified') is not False
+            or authorization.get('unknown_definition_policy') != 'stop'
+            or authorization.get('produce_id') != produce_id or authorization.get('idol_card_id') != idol_card_id
+            or any(owner.get(key) != authorization.get(key) for key in ('game_pid', 'session_generation'))):
+        raise RuntimeCommandError('Reference trial owner, selection or explicit single-run scope differs')
+
+
+def _read_reference_trial_claim(authorization, owner, *, produce_id, idol_card_id):
+    _check_reference_trial_owner(authorization, owner, produce_id=produce_id, idol_card_id=idol_card_id)
+    path = _reference_trial_claim_path(authorization)
+    if not path.is_file() or path.is_symlink():
+        raise RuntimeCommandError('Reference trial has no preserved before-AP reservation')
+    claim = json.loads(path.read_bytes())
+    if (claim.get('schema') != 'gkms.runtime-reference-trial-claim.v1'
+            or claim.get('authorization') != authorization or claim.get('status') not in ('reserved', 'bound')
+            or claim.get('authorization_sha256') != hashlib.sha256(canonical_json_bytes(authorization)).hexdigest()
+            or any((claim.get('native_owner') or {}).get(key) != owner.get(key)
+                for key in ('game_pid', 'session_generation'))):
+        raise RuntimeCommandError('Reference trial claim belongs to another authorization or native owner')
+    return path, claim
+
+
+def _reserve_reference_trial(authorization, owner, snapshot, *, produce_id, idol_card_id):
+    """One durable AP reservation, then the original create_run binds its UUID."""
+    _check_reference_trial_owner(authorization, owner, produce_id=produce_id, idol_card_id=idol_card_id)
+    if owner.get('run_id') is not None:
+        raise RuntimeCommandError('An existing reference trial run cannot authorize another AP start')
+    path = _reference_trial_claim_path(authorization)
+    with _controller_lease(30):
+        if path.exists():
+            _, claim = _read_reference_trial_claim(authorization, owner,
+                produce_id=produce_id, idol_card_id=idol_card_id)
+            if claim['status'] != 'reserved' or claim.get('run_id') is not None:
+                raise RuntimeCommandError('Reference trial authorization has already been used by a cultivation')
+            if claim.get('start_revision') != snapshot.revision:
+                raise RuntimeCommandError('Reference trial reservation belongs to a different AP start boundary')
+        else:
+            claim = {'schema': 'gkms.runtime-reference-trial-claim.v1',
+                'authorization': deepcopy(authorization), 'status': 'reserved', 'run_id': None,
+                'authorization_sha256': hashlib.sha256(canonical_json_bytes(authorization)).hexdigest(),
+                'native_owner': deepcopy(owner), 'start_revision': snapshot.revision,
+                'start_snapshot_path': str(snapshot.source_path)}
+            atomic_write(path, canonical_json_bytes(claim))
+    return claim
+
+
+def _bind_reference_trial(authorization, owner, run_id, *, produce_id, idol_card_id):
+    if not isinstance(run_id, str) or not run_id.startswith('run-') or owner.get('run_id') != run_id:
+        raise RuntimeCommandError('Reference trial binding requires the actual immutable run identity')
+    with _controller_lease(30):
+        path, claim = _read_reference_trial_claim(authorization, owner,
+            produce_id=produce_id, idol_card_id=idol_card_id)
+        if claim['status'] == 'bound':
+            if claim.get('run_id') != run_id or claim['native_owner'] != owner:
+                raise RuntimeCommandError('Reference trial authorization is bound to another cultivation')
+        else:
+            if claim.get('run_id') is not None:
+                raise RuntimeCommandError('Reference trial reservation has an inconsistent run identity')
+            claim = {**claim, 'status': 'bound', 'run_id': run_id, 'native_owner': deepcopy(owner)}
+            atomic_write(path, canonical_json_bytes(claim))
+    return claim
+
+
+def _configured_reference_trial(exam_policy_variant):
+    if exam_policy_variant != 'rl_shared_iql':
+        return None
+    from .rl.private_actor_assets import load_private_actor_descriptor
+    descriptor = load_private_actor_descriptor()
+    return None if descriptor is None else deepcopy(descriptor.get('runtime_reference_trial'))
+
+
+def _configured_public_material_policy(exam_policy_variant):
+    if exam_policy_variant != 'rl_shared_iql':
+        return None
+    from .gui_exam_models import get_gui_exam_policy
+    descriptor = get_gui_exam_policy(exam_policy_variant)
+    return (deepcopy(descriptor.get('public_reference_material_policy'))
+            if descriptor.get('portable_actor') is True else None)
+
+
+def _read_native_model_route(client, snapshot, *, produce_id, idol_card_id, plan_type,
+                             bundle_path=None, exam_policy_variant=None):
+    """The same recorder/current-code/owner preflight for start or adoption."""
+    native_status = _preflight_start_recorder(client, snapshot.session_generation)
+    model_context = None
+    if exam_policy_variant is not None:
+        model_read = client.execute('read_model_context').require_ok()
+        if model_read.request.session_generation != snapshot.session_generation:
+            raise RuntimeCommandError('Native generation changed during model preflight')
+        model_context = model_read.raw.get('model_context')
+        if isinstance(model_context, Mapping):
+            model_context = {**model_context, 'native_owner': _reference_trial_owner(
+                native_status, model_read.request.session_generation)}
+    route = _preflight_native_model_mode(produce_id, idol_card_id, plan_type, bundle_path,
+        native_capabilities=native_status.get('capabilities', ()),
+        **({'exam_policy_variant':exam_policy_variant, 'model_context':model_context}
+           if exam_policy_variant is not None else {}))
+    return route, model_context
+
+
+def _resume_public_materials(identity, *, exam_policy_variant, produce_id, idol_card_id):
+    from .runtime_live_exam_input import public_reference_material_owner
+    value = identity.evidence.get('public_reference_materials')
+    policy = _configured_public_material_policy(exam_policy_variant)
+    if (not isinstance(value, Mapping) or policy is None or value.get('policy') != policy
+            or value.get('run_id') not in (None, identity.run_id)):
+        raise RuntimeCommandError('Resume must retain its fixed public model and reference materials')
+    binding = {**deepcopy(value), 'run_id':identity.run_id}
+    public_reference_material_owner(binding, run_id=identity.run_id,
+        idol_card_id=idol_card_id, produce_id=produce_id)
+    return binding
+
+
 def _preflight_native_model_mode(produce_id, idol_card_id, plan_type, bundle_path=None, *, native_capabilities=None,
                                  exam_policy_variant=None, model_context=None):
     """Check the selected model before the normal Start button can spend AP."""
@@ -818,6 +1202,7 @@ def run_runtime_cultivation(
     exam_policy_variant: str | None = None,
     gateway: RuntimeOuterGateway | None = None, max_cycles: int = 10000,
     settlement_only: bool = False,
+    outer_policy_factory: Callable | None = None,
 ):
     """Drive the complete native scene lifecycle; no visual reader is built."""
     from .cultivation_contracts import (
@@ -853,10 +1238,14 @@ def run_runtime_cultivation(
     loadout_constraints = None
     loadout_mode = None
     loadout_descriptor = None
+    runtime_reference_trial = None
+    public_reference_materials = None
+    public_material_asset_preflight = None
     snapshot = None
     deadline_without_progress = time.monotonic() + 45.0
     last_revision = None
     deck_plan_owner = None
+    learned_outer_policy = None
     from .runtime_economy_context import read_economy_receipt, recover_economy_context
 
     economy_context = recover_economy_context(client.root / "completed_outer")
@@ -868,6 +1257,12 @@ def run_runtime_cultivation(
         payload = result.to_dict()
         payload["audition_strategy"] = audition_strategy
         payload['exam_policy_variant'] = exam_policy_variant
+        if public_reference_materials is not None:
+            payload['public_reference_materials'] = deepcopy(public_reference_materials)
+        if runtime_reference_trial is not None:
+            payload['runtime_reference_trial'] = deepcopy(runtime_reference_trial)
+            payload['runtime_reference_trial_sha256'] = hashlib.sha256(canonical_json_bytes(runtime_reference_trial)).hexdigest()
+            payload['runtime_reference_trial_claim_path'] = str(_reference_trial_claim_path(runtime_reference_trial))
         payload["weekly_bc_provider_path"] = str(weekly_bc_provider_path) if weekly_bc_provider_path is not None else None
         if completion_evidence is not None:
             payload["native_completion"] = completion_evidence
@@ -912,6 +1307,11 @@ def run_runtime_cultivation(
         return finish(STATUS_HARD_STOP, f"native-mode-rules-not-implemented:{produce_id}", 0)
     if exam_policy_variant not in (None,'baseline','integrated','rl_shared_iql'):
         return finish(STATUS_HARD_STOP, 'Unknown explicit exam policy variant', 0)
+    rl_strategy_required=exam_policy_variant=='rl_shared_iql' or outer_policy_factory is not None
+    if (rl_strategy_required and outer_policy_factory is None and not settlement_only
+            and expected_run_id is None):
+        return finish(STATUS_HARD_STOP,
+            'RL_STRATEGY_NOT_READY: full cultivation needs the shared RL decision provider; legacy strategy fallback is disabled',0)
     if audition_strategy not in AUDITION_STRATEGIES:
         return finish(STATUS_HARD_STOP, f"native-audition-strategy-not-implemented:{audition_strategy}", 0)
     if settlement_only and expected_run_id is None:
@@ -924,11 +1324,17 @@ def run_runtime_cultivation(
             resumed = None
             if gateway.pending_path.exists():
                 resumed = gateway.resume()
-                if resumed.status == "pending":
+                if resumed.status in ("pending", "interrupted"):
                     return finish(STATUS_HARD_STOP, resumed.detail, cycle)
                 if resumed.request_id is not None:
                     economy_context = read_economy_receipt(client.root / "completed_outer", resumed.request_id, economy_context)
             snapshot = gateway.read()
+            recover_error = getattr(gateway, 'return_to_title_if_needed', None)
+            interruption = recover_error(snapshot) if callable(recover_error) else None
+            if interruption is not None:
+                return finish(STATUS_HARD_STOP, interruption.detail, cycle)
+            from .gui_setup.native_observation import observe_outer_snapshot
+            observe_outer_snapshot(snapshot, run_id=source_run_id)
             state = snapshot.raw.get("state") or {}
             progress = snapshot.raw.get("progress") or {}
             if snapshot.raw.get("surface") == "error":
@@ -936,6 +1342,28 @@ def run_runtime_cultivation(
                 description = error.get("description", "native game error")
                 return finish(STATUS_HARD_STOP, "native-game-error: " + str(description), cycle)
             active_session_run = load_active_run()
+            active_trial = (active_session_run.evidence.get('runtime_reference_trial')
+                if active_session_run is not None else None)
+            if (active_session_run is not None
+                    and active_session_run.evidence.get('public_reference_materials') is not None
+                    and public_reference_materials is None):
+                if (active_session_run.produce_id != produce_id or active_session_run.idol_card_id != idol_card_id
+                        or source_run_id not in (None, active_session_run.run_id)):
+                    raise RuntimeCommandError('Public material evidence belongs to another active cultivation')
+                public_reference_materials = _resume_public_materials(active_session_run,
+                    exam_policy_variant=exam_policy_variant, produce_id=produce_id, idol_card_id=idol_card_id)
+                public_material_asset_preflight = deepcopy(active_session_run.evidence.get('outer_asset_preflight'))
+            if active_trial is not None:
+                if (_configured_reference_trial(exam_policy_variant) != active_trial
+                        or active_session_run.evidence.get('runtime_reference_trial_sha256') !=
+                            hashlib.sha256(canonical_json_bytes(active_trial)).hexdigest()
+                        or active_session_run.produce_id != produce_id or active_session_run.idol_card_id != idol_card_id
+                        or source_run_id not in (None, active_session_run.run_id)):
+                    raise RuntimeCommandError('Resume must retain the original explicit reference trial')
+                runtime_reference_trial = deepcopy(active_trial)
+                _bind_reference_trial(runtime_reference_trial,
+                    _reference_trial_owner(client.read_status(), snapshot.session_generation, active_session_run.run_id),
+                    active_session_run.run_id, produce_id=produce_id, idol_card_id=idol_card_id)
             if (active_session_run is not None and source_run_id in (None, active_session_run.run_id)
                     and active_session_run.produce_id == produce_id and active_session_run.idol_card_id == idol_card_id
                     and active_session_run.evidence.get('exam_policy_variant') != exam_policy_variant):
@@ -1083,14 +1511,45 @@ def run_runtime_cultivation(
                         raise RuntimeCommandError('Resume must retain the original cultivation model selection')
                     source_run_id = existing.run_id
                 else:
+                    public_policy = _configured_public_material_policy(exam_policy_variant)
+                    if public_policy is not None and public_reference_materials is None:
+                        from .portable_outer_assets import preflight_outer_assets
+                        public_material_asset_preflight = preflight_outer_assets(produce_id=produce_id,
+                            idol_card_id=idol_card_id, weekly_provider_path=weekly_bc_provider_path)
+                        route, _ = _read_native_model_route(client, snapshot, produce_id=produce_id,
+                            idol_card_id=idol_card_id, plan_type=plan_type, bundle_path=plan2_policy_bundle_path,
+                            exam_policy_variant=exam_policy_variant)
+                        public_reference_materials = deepcopy(route.get('public_reference_materials'))
+                    if public_policy is not None and (not isinstance(public_reference_materials, Mapping)
+                            or public_reference_materials.get('policy') != public_policy):
+                        raise RuntimeCommandError('Public model lacks its observed reference-material preflight')
+                    runtime_reference_trial = runtime_reference_trial or _configured_reference_trial(exam_policy_variant)
+                    if runtime_reference_trial is not None:
+                        owner = _reference_trial_owner(client.read_status(), snapshot.session_generation)
+                        _, claim = _read_reference_trial_claim(runtime_reference_trial, owner,
+                            produce_id=produce_id, idol_card_id=idol_card_id)
+                        if claim['status'] != 'reserved' or claim.get('run_id') is not None:
+                            raise RuntimeCommandError('Reference trial cannot adopt another or already completed cultivation')
                     identity = create_run(idol_card_id=idol_card_id, character_id=progress["characterId"],
                         produce_id=produce_id, evidence={"source": "native-produce-progress",
                             "audition_strategy": audition_strategy,
                             "exam_policy_variant": exam_policy_variant,
                             "weekly_bc_provider_path": str(weekly_bc_provider_path) if weekly_bc_provider_path is not None else None,
                             "session_generation": snapshot.session_generation,
-                            "native_revision": snapshot.revision, "snapshot_path": str(snapshot.source_path)})
+                            "native_revision": snapshot.revision, "snapshot_path": str(snapshot.source_path),
+                            **({'public_reference_materials': deepcopy(public_reference_materials),
+                                'outer_asset_preflight': deepcopy(public_material_asset_preflight)}
+                               if public_reference_materials is not None else {}),
+                            **({'runtime_reference_trial': deepcopy(runtime_reference_trial),
+                                'runtime_reference_trial_sha256': hashlib.sha256(canonical_json_bytes(runtime_reference_trial)).hexdigest()}
+                               if runtime_reference_trial is not None else {})})
                     source_run_id = identity.run_id
+                    if public_reference_materials is not None:
+                        public_reference_materials = _resume_public_materials(identity,
+                            exam_policy_variant=exam_policy_variant, produce_id=produce_id, idol_card_id=idol_card_id)
+                    if runtime_reference_trial is not None:
+                        _bind_reference_trial(runtime_reference_trial, {**owner, 'run_id': source_run_id},
+                            source_run_id, produce_id=produce_id, idol_card_id=idol_card_id)
                 entered = True
             if in_progress and source_run_id is not None:
                 progress = snapshot.raw.get("progress") or {}
@@ -1139,6 +1598,8 @@ def run_runtime_cultivation(
                     loadout_constraints = load_loadout_constraints(DEFAULT_CONSTRAINTS_PATH, account_scope=loadout_inventory.account_scope) if DEFAULT_CONSTRAINTS_PATH.is_file() else LoadoutConstraints()
                     from .private_loadout_mode import load_recommendation_mode, private_rl_descriptor
                     loadout_mode = load_recommendation_mode()
+                    # Equipment preference is explicit and independent of the
+                    # fixed exam/outer actor; never silently switch either one.
                     if loadout_mode == "shared_offline_rl":
                         # Freeze the qualified model artifact before any loadout
                         # changes; do not resolve another checkpoint mid-prepare.
@@ -1234,6 +1695,7 @@ def run_runtime_cultivation(
                             {"source": ("shared-offline-iql-loadout" if loadout_mode == "shared_offline_rl" else "game-native-memory-auto-selection"),
                              "operation_serial": current["operation_serial"], "memory_ids": list(wanted),
                              "slot_overrides": list(overrides),
+                             "recommendation_mode": loadout_mode,
                              "explicit_lock_overrides": list(overrides) if loadout_mode != "shared_offline_rl" else [],
                              "user_locked_memory_ids": list(loadout_constraints.locked_memory_ids),
                              "rl_selected_memory_ids": list(loadout_proposal.selection.memory_ids) if loadout_mode == "shared_offline_rl" else [],
@@ -1295,6 +1757,7 @@ def run_runtime_cultivation(
                                                         {"applied": True, "sections": list(applied_sections),
                                                          "full_loadout_applied": prepared_loadout,
                                                          "recommendation_mode": loadout_mode,
+                                                         "support_source": "shared-offline-iql-loadout" if loadout_mode == "shared_offline_rl" else "known-initial-parameters-and-sp-ranking",
                                                          "model_sha256": None if loadout_descriptor is None else loadout_descriptor["model_sha256"],
                                                          "reasons": list(loadout_proposal.reasons)}))
                 continue
@@ -1314,9 +1777,35 @@ def run_runtime_cultivation(
                 from .run_identity import DEFAULT_RUN_ROOT
 
                 deck_plan_owner = RuntimeDeckPlan(DEFAULT_RUN_ROOT / source_run_id / "deck_plan.json", run_id=source_run_id)
+            if (learned_outer_policy is None and outer_policy_factory is not None
+                    and source_run_id is not None and not settlement_only):
+                from .runtime_rl_outer_policy import RuntimeOuterValuePolicy, requires_outer_comparison
+                comparison=requires_outer_comparison
+                if getattr(outer_policy_factory,'observed_actor',False):
+                    from .runtime_observed_outer_policy import requires_observed_outer_comparison
+                    comparison=requires_observed_outer_comparison
+                if comparison(snapshot.raw):
+                    learned_outer_policy = outer_policy_factory(run_id=source_run_id, produce_id=produce_id,
+                        idol_card_id=idol_card_id, cancelled=stop_requested)
+                    if not isinstance(learned_outer_policy, RuntimeOuterValuePolicy):
+                        raise RuntimeCommandError('learned outer factory did not return the shared policy adapter')
+                    if any(learned_outer_policy.context[key] != value for key, value in
+                            (('run_id', source_run_id), ('produce_id', produce_id), ('idol_card_id', idol_card_id))):
+                        raise RuntimeCommandError('learned outer factory changed the active cultivation identity')
+                    bind_history=getattr(learned_outer_policy,'bind_history_source',None)
+                    if callable(bind_history):
+                        bind_history(command_root=client.root,current_steps=lambda:steps)
             target, decision = choose_runtime_outer_action(snapshot, produce_id=produce_id, idol_card_id=idol_card_id,
                 audition_strategy=audition_strategy, deck_plan_owner=deck_plan_owner, operation_context=economy_context,
-                weekly_bc_provider_path=weekly_bc_provider_path)
+                weekly_bc_provider_path=weekly_bc_provider_path,
+                **({'learned_outer_policy': learned_outer_policy} if learned_outer_policy is not None else {}),
+                **({'require_learned_confirmation': True,'require_learned_strategy':True}
+                   if rl_strategy_required else {}))
+            if stop_requested() or decision.get('status') == 'cancelled':
+                return finish(STATUS_STOPPED, 'user stopped before the next native input', cycle)
+            if decision.get('status') == 'model-unavailable':
+                return finish(STATUS_HARD_STOP, 'learned outer policy unavailable: ' +
+                    str(decision.get('unavailable', decision.get('reason'))), cycle)
             if target is None:
                 if time.monotonic() >= deadline_without_progress:
                     raise RuntimeCommandError("native chosen action did not become ready: " + str(decision.get("reason", "")))
@@ -1328,18 +1817,21 @@ def run_runtime_cultivation(
                 from .portable_outer_assets import preflight_outer_assets
                 decision = {**decision, 'outer_asset_preflight':preflight_outer_assets(
                     produce_id=produce_id,idol_card_id=idol_card_id,weekly_provider_path=weekly_bc_provider_path)}
-                native_status = _preflight_start_recorder(client, snapshot.session_generation)
-                model_context = None
-                if exam_policy_variant is not None:
-                    model_read = client.execute('read_model_context').require_ok()
-                    if model_read.request.session_generation != snapshot.session_generation:
-                        raise RuntimeCommandError('Native generation changed during model preflight')
-                    model_context = model_read.raw.get('model_context')
-                decision = {**decision, "model_mode_route": _preflight_native_model_mode(
-                    produce_id, idol_card_id, plan_type, plan2_policy_bundle_path,
-                    native_capabilities=native_status.get("capabilities", ()),
-                    **({'exam_policy_variant':exam_policy_variant,'model_context':model_context}
-                       if exam_policy_variant is not None else {}))}
+                route, model_context = _read_native_model_route(client, snapshot, produce_id=produce_id,
+                    idol_card_id=idol_card_id, plan_type=plan_type, bundle_path=plan2_policy_bundle_path,
+                    exam_policy_variant=exam_policy_variant)
+                decision = {**decision, "model_mode_route": route}
+                public = route.get('public_reference_materials')
+                if public is not None:
+                    if public.get('policy') != _configured_public_material_policy(exam_policy_variant):
+                        raise RuntimeCommandError('Public reference material policy changed before AP use')
+                    public_reference_materials = deepcopy(public)
+                    public_material_asset_preflight = deepcopy(decision['outer_asset_preflight'])
+                trial = decision['model_mode_route'].get('runtime_reference_trial')
+                if trial is not None:
+                    runtime_reference_trial = deepcopy(trial)
+                    _reserve_reference_trial(runtime_reference_trial, model_context['native_owner'], snapshot,
+                        produce_id=produce_id, idol_card_id=idol_card_id)
             result = gateway.execute(snapshot, target)
             if result.status == "replan":
                 continue
@@ -1349,6 +1841,8 @@ def run_runtime_cultivation(
             if result.status != "settled":
                 return finish(STATUS_HARD_STOP, result.detail, cycle)
             economy_context = read_economy_receipt(client.root / "completed_outer", result.request_id, economy_context)
+            if learned_outer_policy is not None:
+                learned_outer_policy.observe_settled(snapshot, target, result, economy_context)
             if decision.get("clear_operation_context") is True:
                 economy_context = None
             if decision.get("stop_after_action") is True:

@@ -44,6 +44,22 @@ def package_self_check(slot, *, import_gui=True):
         'artifact_sha256': binding['artifact_sha256'], 'tensors_equal_original': True,
         'tensor_count': len(policy.model.state_dict()), 'policy_factory_loaded': True,
         'policy_binding_variant': binding['variant_id'], 'device': 'cpu'}}
+    from .portable_actor_assets import actor_descriptor, load_portable_outer_policy_factory
+    from .rl_loadout_advisor import build_private_initial_loadout_selector
+    descriptor = actor_descriptor(assets)
+    initial = build_private_initial_loadout_selector(descriptor)
+    observed = load_portable_outer_policy_factory()(run_id='public-package-self-check',
+        produce_id='produce-004', idol_card_id='i_card-hume-3-006')
+    initial.validate_unchanged(); observed.validate_model(observed.model)
+    expected = policy.model.state_dict()
+    import torch
+    if any(set(model.state_dict()) != set(expected) or any(
+            not torch.equal(value, model.state_dict()[name]) for name, value in expected.items())
+            for model in (initial.model, observed.model)):
+        raise ValueError('Public exam, initial and outer owners loaded different fixed weights.')
+    shared_scope = {'exam_factory_loaded': True, 'initial_factory_loaded': True,
+        'observed_outer_factory_loaded': True, 'all_tensors_identical': True,
+        'private_runtime_trial_included': False, 'recommendation_or_native_input_performed': False}
     if import_gui:
         from .gui import GkmsApp
         from .glass_gui.launcher import main
@@ -53,7 +69,7 @@ def package_self_check(slot, *, import_gui=True):
     return {'schema': 'gkms.public-gui-package-self-check.v1', 'application': info(), 'passed': True,
         'model_manifest_sha256': RELEASE_MANIFEST_SHA256, 'models': models, 'loadout_source': loadout.portable_source,
         'presentation':'native-webview2','native_window_verified':window_executable.is_file(),
-        'outer_source':outer,
+        'outer_source':outer, 'shared_policy_scope':shared_scope,
         'character_display_name_count':len(display_names),
         'idol_display_catalog_count':len(character_catalog.entries),
         'gui_import_verified': import_gui, 'gui_created': False, 'game_io': False, 'network_used': False,
@@ -66,17 +82,26 @@ def main(argv=None):
     parser.add_argument('--no-browser', action='store_true')
     parser.add_argument('--self-check-output', type=Path)
     parser.add_argument('--session-file', type=Path, help='Isolated read-only host diagnostic receipt; contains a private local token.')
+    parser.add_argument('--control-session-file', type=Path,
+                        help='Explicit local automation: save the existing GUI control session in user data. Contains a private token; does not start cultivation.')
     parser.add_argument('--maintenance-worker', action='store_true')
     args = parser.parse_args(argv)
-    if args.maintenance_worker and (args.read_only or args.no_browser or args.self_check_output is not None or args.session_file is not None):
+    if args.maintenance_worker and (args.read_only or args.no_browser or args.self_check_output is not None or args.session_file is not None or args.control_session_file is not None):
         parser.error('The fixed maintenance worker role cannot be combined with GUI or diagnostic options.')
     if args.session_file is not None and (not args.read_only or not args.no_browser or args.self_check_output is not None):
         parser.error('A diagnostic session file requires read-only mode without a browser or self-check.')
+    if args.control_session_file is not None and (args.read_only or args.session_file is not None or args.self_check_output is not None):
+        parser.error('A control session requires an explicit normal GUI launch, separate from diagnostics or self-check.')
+    if args.control_session_file is not None and not args.control_session_file.is_absolute():
+        parser.error('A control session receipt requires an absolute user-data path.')
+    session_file = args.control_session_file or args.session_file
     slot = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(os.environ['GKMS_APP_ROOT']).resolve()
     try:
         paths = configure_public_environment(slot)
-        if args.session_file is not None and not args.session_file.resolve().is_relative_to(paths['user_data_root']):
-            raise ValueError('The diagnostic session receipt must remain inside the isolated user-data directory.')
+        if session_file is not None and not session_file.resolve().is_relative_to(paths['user_data_root']):
+            raise ValueError('The session receipt must remain inside the user-data directory.')
+        if args.control_session_file is not None and args.control_session_file.exists():
+            raise ValueError('Choose a new control session receipt; existing files are preserved.')
         if args.maintenance_worker:
             from .gui_setup.app_updates import verify_slot
             verify_slot(slot)
@@ -102,7 +127,7 @@ def main(argv=None):
         options = ['--project-root', str(slot)]
         if args.read_only: options.append('--read-only')
         if args.no_browser: options.append('--no-browser')
-        if args.session_file is not None: options.extend(['--session-file', str(args.session_file.resolve())])
+        if session_file is not None: options.extend(['--session-file', str(session_file.resolve())])
         return launch_gui(options, public_build=True)
     except Exception as error:
         import traceback

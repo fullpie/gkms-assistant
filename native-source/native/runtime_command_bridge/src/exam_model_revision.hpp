@@ -18,6 +18,13 @@ inline nlohmann::json reference_presence_revision_view(nlohmann::json proof){
 // state identity (the capture may clone them); null bits, types, UIDs, hashes,
 // counters and the actual sequence/parameter/command/UI owners remain in CAS.
 inline nlohmann::json exam_model_revision_view(nlohmann::json snapshot){
+    // A best-effort read of the newly stored memory grade is presentation
+    // evidence only. Keep created_memory_id, legal targets and all existing
+    // owner/readiness fields in the action revision exactly as before.
+    if(snapshot.value("surface",std::string())=="produce_result"&&snapshot.contains("ui_state")&&snapshot["ui_state"].is_object()){
+        snapshot["ui_state"].erase("created_memory_result");
+        snapshot["ui_state"].erase("created_memory_result_status");
+    }
     if(!snapshot.contains("exam_model_observation")||!snapshot["exam_model_observation"].is_object())return snapshot;
     auto& dto=snapshot["exam_model_observation"];
     dto.erase("save_object_id");dto.erase("save_object_id_after");

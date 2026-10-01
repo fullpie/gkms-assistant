@@ -59,6 +59,57 @@ constexpr std::array<Binding,5> buttons={{{"result.confirm_selection","get_Memor
     {"result.continue_selection_memory","get_SelectMemoryDetailCompleteButton","selection_memory_detail"},
     {"result.continue_rewards","get_RewardCompleteButton","rewards"},
     {"result.continue_achievements","get_AchievementCompleteButton","achievements"}}};
+
+json created_memory_result(Runtime& r,const std::string& assigned){
+    auto manager=r.klass("Assembly-CSharp.dll","Campus.Common.User","UserDataManager");
+    auto list_getter=r.method(manager,"get_UserMemoryList",0);
+    if(!result_memory_collection_getter_valid(r.method_result_contract(list_getter),r.method_parameter_contract(list_getter)))
+        throw std::runtime_error("created memory collection static getter contract unavailable");
+    auto memories=r.invoke(list_getter,nullptr);
+    if(!memories)return nullptr;
+    const auto collection=r.object_class(memories);
+    if(r.class_name(collection)!="UserMemoryCollection"||r.class_namespace(collection)!="Campus.Common.User")
+        throw std::runtime_error("created memory collection type unavailable");
+    // The retained PC metadata declares this unique two-argument method on
+    // Qua.UserDataManagement.UserDataCollectionBase<TId,TData>. FindById has
+    // two overloads; TryGetValue avoids enumeration and an ambiguous lookup.
+    auto lookup=r.method(collection,"TryGetValue",2);
+    const auto parameters=r.method_parameter_contract(lookup).at("parameters");
+    const auto returns=r.method_result_contract(lookup);
+    if(parameters.size()!=2||parameters.at(0).at("byref")!=false||parameters.at(1).at("byref")!=true||
+        parameters.at(0).at("type_name")!="System.String"||returns.at("is_static")!=false||
+        parameters.at(1).at("type_name")!="Campus.Common.Proto.Client.Transaction.UserMemory&"||
+        returns.at("return_type")!="System.Boolean")
+        throw std::runtime_error("created memory keyed lookup signature unavailable");
+    auto key=r.new_string(assigned.c_str());void* memory{};
+    const bool found=r.unbox<bool>(r.invoke(lookup,memories,{key,&memory}));
+    if(!found||!memory)return nullptr;
+    auto type=r.object_class(memory);
+    if(r.class_name(type)!="UserMemory"||r.class_namespace(type)!="Campus.Common.Proto.Client.Transaction")
+        throw std::runtime_error("created memory record type unavailable");
+    const auto identity_text=[&](const char* name){
+        auto getter=r.method(type,name,0);
+        const auto contract=r.method_result_contract(getter);
+        if(contract.at("is_static")!=false||contract.at("return_type")!="System.String")
+            throw std::runtime_error(std::string("created memory string getter contract unavailable: ")+name);
+        return r.string(r.invoke(getter,memory));
+    };
+    const auto actual=identity_text("get_UserMemoryId");
+    if(actual!=assigned)throw std::runtime_error("created memory keyed lookup returned another ID");
+    const auto idol=identity_text("get_IdolCardId"),produce=identity_text("get_ProduceId");
+    std::optional<int> grade;std::string unavailable;
+    try{
+        auto getter=r.method(type,"get_Grade",0);
+        const auto contract=r.method_result_contract(getter);
+        if(contract.at("is_static")!=false||
+            contract.at("return_type")!="Campus.Common.Proto.Client.Enums.ResultGrade")
+            throw std::runtime_error("UserMemory Grade enum contract unavailable");
+        grade=r.unbox<int>(r.invoke(getter,memory));
+    }catch(const std::exception& error){unavailable=error.what();}
+    auto result=result_created_memory_value(assigned,actual,idol,produce,grade);
+    if(result.is_object()&&!unavailable.empty())result["presentation_unavailable_reason"]=unavailable;
+    return result;
+}
 }
 
 bool append_produce_result_actions(Runtime& r,void* presenter,const std::string& screen,json& snapshot){
@@ -73,6 +124,7 @@ bool append_produce_result_actions(Runtime& r,void* presenter,const std::string&
         snapshot["surface"]="produce_result";
         snapshot["legal_actions"]=json::array();
         snapshot["ui_state"]=context;
+        append_created_memory_presentation(snapshot["ui_state"],[&](const std::string& id){return created_memory_result(r,id);});
         snapshot["ui_state"]["stage"]=cancel?"memory_already_created":"confirm_memory_creation";
         // CreateMemoryAsync assigns this ID before awaiting ProduceEndAsync.
         // It forbids re-entry but is not itself a completion receipt.
@@ -108,6 +160,7 @@ bool append_produce_result_actions(Runtime& r,void* presenter,const std::string&
         {"is_reroll_memory",flag(r,model,"get_IsRerollMemory")},
         {"stage_buttons",json::object()},
         {"photos",json::array()},{"stages",json::object()}};
+    append_created_memory_presentation(state,[&](const std::string& id){return created_memory_result(r,id);});
     auto create=r.read_object_field(current_view,"_memoryCreate");
     auto reward=r.read_object_field(current_view,"_reward");
     auto& stages=state["stages"];

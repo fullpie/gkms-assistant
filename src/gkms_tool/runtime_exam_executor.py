@@ -224,6 +224,20 @@ class RuntimeExamGateway:
     def pending_path(self) -> Path:
         return self.client.root / "pending_exam.json"
 
+    def _return_to_title_if_needed(self) -> RuntimeExamOutcome | None:
+        from .runtime_outer_runner import RuntimeOuterGateway
+        outcome = RuntimeOuterGateway(self.client, timeout=self.timeout,
+            cancelled=self.cancelled, monotonic=self.monotonic, sleep=self.sleep,
+            lease=self.lease).return_to_title_if_needed()
+        if outcome is None:
+            return None
+        if outcome.status not in {"pending", "interrupted"}:
+            raise RuntimeCommandProtocolError("error recovery cannot settle an Exam action")
+        # The recovery child is not an actor action or an S' transition. The
+        # common gateway retains/archives the original journal and input owner.
+        return RuntimeExamOutcome(outcome.status, outcome.detail,
+                                  request_id=outcome.request_id)
+
     def read_current(self, base: AuditionLocalSaveStateEvidence) -> AuditionLocalSaveStateEvidence:
         result = self.read_native(base)
         assert result.evidence is not None
@@ -234,6 +248,9 @@ class RuntimeExamGateway:
         """Return the typed state and its original native serializer payload."""
         with self.lease(self.timeout):
             if self.pending_path.exists():
+                interruption = self._return_to_title_if_needed()
+                if interruption is not None:
+                    raise RuntimeCommandError(f"game error recovery {interruption.status}: {interruption.detail}")
                 pending = json.loads(self.pending_path.read_text(encoding="utf-8"))
                 self._validate_pending_model(pending)
                 outcome = self._settle(pending)
@@ -241,7 +258,14 @@ class RuntimeExamGateway:
                     raise RuntimeCommandError(outcome.detail)
                 return outcome
             deadline = self.monotonic() + self.timeout
+            next_error_at = 0.0
             while True:
+                now = self.monotonic()
+                if now >= next_error_at:
+                    next_error_at = now + .25
+                    interruption = self._return_to_title_if_needed()
+                    if interruption is not None:
+                        raise RuntimeCommandError(f"game error recovery {interruption.status}: {interruption.detail}")
                 if self.cancelled is not None and self.cancelled():
                     raise RuntimeCommandError("cancelled while waiting for the game decision phase")
                 result = self.client.execute("read_snapshot", timeout=min(5.0, max(0.0, deadline - self.monotonic())))
@@ -271,11 +295,14 @@ class RuntimeExamGateway:
         preferred_selection_guid: str | None = None,
         secondary_policy: str | None = None,
     ) -> RuntimeExamOutcome:
-        if secondary_policy not in (None, "native-card-choice-value-v1", "gui-exam-bc-v1", "rl-exam-shared-iql-v1"):
-            raise RuntimeCommandError("unsupported native secondary selection policy")
-        if secondary_policy in ('gui-exam-bc-v1', 'rl-exam-shared-iql-v1') and self.model_policy is None:
-            raise RuntimeCommandError('The selected model does not own secondary decisions')
         with self.lease(self.timeout):
+            interruption = self._return_to_title_if_needed()
+            if interruption is not None:
+                return interruption
+            if secondary_policy not in (None, "native-card-choice-value-v1", "gui-exam-bc-v1", "rl-exam-shared-iql-v1"):
+                raise RuntimeCommandError("unsupported native secondary selection policy")
+            if secondary_policy in ('gui-exam-bc-v1', 'rl-exam-shared-iql-v1') and self.model_policy is None:
+                raise RuntimeCommandError('The selected model does not own secondary decisions')
             if self.cancelled is not None and self.cancelled() and not self.pending_path.exists():
                 return RuntimeExamOutcome("rejected", "cancelled before native input")
             if self.pending_path.exists():
@@ -398,6 +425,9 @@ class RuntimeExamGateway:
             raw_request["request_id"], raw_request["session_generation"], raw_request["command"],
             raw_request.get("expected_revision"), raw_request.get("target"),
         )
+        interruption = self._return_to_title_if_needed()
+        if interruption is not None:
+            return interruption
         if self.client.read_status()["session_generation"] != request.session_generation:
             return RuntimeExamOutcome("pending", "previous game session requires explicit reconciliation",
                                       request_id=request.request_id)
@@ -412,7 +442,14 @@ class RuntimeExamGateway:
         settlement = None
         next_snapshot_at = 0.0
         next_selection_at = 0.0
+        next_error_at = self.monotonic() + .25
         while True:
+            now = self.monotonic()
+            if now >= next_error_at:
+                next_error_at = now + .25
+                interruption = self._return_to_title_if_needed()
+                if interruption is not None:
+                    return interruption
             result = self.client.poll_result(request)
             if result is not None:
                 if result.status == "rejected":

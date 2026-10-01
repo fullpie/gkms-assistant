@@ -92,6 +92,7 @@ def _changed_deck(deck, selected, kind):
 def choose_runtime_economy_action(
     native, *, deck_context: Callable[[], Mapping[str, Any]] | Mapping[str, Any],
     operation_context: Mapping[str, Any] | None = None, database: Path = DEFAULT_DATABASE,
+    learned_confirmation=None,
 ) -> tuple[Mapping[str, Any] | None, Mapping[str, Any]]:
     """Rank the full offer pool, then bind its real preview/execute callback."""
     raw = native.raw if hasattr(native, "raw") else native
@@ -348,6 +349,18 @@ def choose_runtime_economy_action(
                     else:
                         reason = "special card operation lacks actual single-card selector receipt; no price/card inference"
                 if valid:
+                    if learned_confirmation is not None:
+                        approval = learned_confirmation(raw, operation_context, row)
+                        if isinstance(approval, Mapping) and approval.get('model_applied') is True:
+                            return choose(confirm, 'confirm the unchanged native quote for the settled model selection',
+                                source='shared-outer-value-confirmation', learned_confirmation=dict(approval),
+                                clear_operation_context=True)
+                        if cancel is None:
+                            return None, {**source, 'status': 'model-unavailable',
+                                'reason': 'the paid model choice has no matching receipt and no normal cancel control'}
+                        return choose(cancel, 'the paid model choice has no matching settled selection receipt',
+                            operation_context_rejected=True, clear_operation_context=cancel is not None,
+                            stop_after_action=cancel is not None)
                     try:
                         value, detail = score(row, actual)
                     except (DeckValueError, sqlite3.Error, OSError):
@@ -364,6 +377,9 @@ def choose_runtime_economy_action(
                         reason = "submitted operation no longer has a supported positive value"
             else:
                 reason = "submitted product quote/price is absent, changed or unavailable"
+        if learned_confirmation is not None and cancel is None:
+            return None, {**source, 'status': 'model-unavailable', 'reason': reason,
+                'operation_context_rejected': True}
         return choose(cancel, reason, operation_context_rejected=True, clear_operation_context=cancel is not None,
                       stop_after_action=cancel is not None, **cancel_detail)
 
