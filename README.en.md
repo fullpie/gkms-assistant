@@ -1,4 +1,6 @@
-# GKMS Assistant 0.2.0
+# GKMS Assistant 0.2.1
+
+0.2.1 fixes memory eligibility: a memory’s origin plan no longer excludes it from equipment candidates. Ownership, locks and exclusions remain checked. RL_v1 weights are unchanged; this correction does not establish better recommendations or scores.
 
 [繁體中文](README.md) · **English** · [日本語](README.ja.md)
 

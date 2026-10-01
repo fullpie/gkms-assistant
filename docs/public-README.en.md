@@ -1,5 +1,7 @@
 # GKMS Assistant {{VERSION}}
 
+0.2.1 fixes memory eligibility: a memory’s origin plan no longer excludes it from equipment candidates. Ownership, locks and exclusions remain checked. RL_v1 weights are unchanged; this correction does not establish better recommendations or scores.
+
 [繁體中文](README.md) · **English** · [日本語](README.ja.md)
 
 An automated cultivation assistant for the PC version of Gakuen Idolmaster. The shared **RL_v1** model recommends support and memory setups, ranks supported cultivation choices, and handles exam cards, drinks and secondary choices. The existing DLL reads game state and executes each action.

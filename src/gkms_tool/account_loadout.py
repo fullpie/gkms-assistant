@@ -551,7 +551,7 @@ def recommend_initial_loadouts(snapshot: AccountInventorySnapshot, loadout: Mapp
     supports = {row.card_id: row for row in snapshot.support_cards
                 if row.plan_type in (plan_type, "ProducePlanType_Common") and row.card_id not in constraints.excluded_support_ids}
     memories = {row.memory_id: row for row in snapshot.memories
-                if row.candidate is not None and row.plan_type in (plan_type, "ProducePlanType_Common") and row.memory_id not in constraints.excluded_memory_ids}
+                if row.candidate is not None and row.memory_id not in constraints.excluded_memory_ids}
     if not _include_memory:
         memories = {}
     if not set(constraints.locked_support_ids) <= supports.keys() or (_include_memory and not set(constraints.locked_memory_ids) <= memories.keys()):

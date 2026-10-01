@@ -1,4 +1,6 @@
-# GKMS Assistant 0.2.0
+# GKMS Assistant 0.2.1
+
+0.2.1 修正回憶候選誤篩：回憶來源流派不再被當成裝備限制，保留持有、鎖定及排除檢查。沿用原 RL_v1 權重，這項修正不代表推薦品質或分數已改善。
 
 **繁體中文** · [English](README.en.md) · [日本語](README.ja.md)
 

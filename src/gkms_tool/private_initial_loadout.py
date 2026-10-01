@@ -421,7 +421,7 @@ class InitialLoadoutSelector:
                     'level_limit_rank_present': False, 'is_rental': True, 'rental_field_present': True}
                 candidates.append(self._candidate('support', facts, key))
             for row in snapshot.memories:
-                if row.plan_type not in (profile.plan_type, 'ProducePlanType_Common') or row.memory_id in constraints.excluded_memory_ids: continue
+                if row.memory_id in constraints.excluded_memory_ids: continue
                 raw = row.to_dict(); card = raw['produce_card']; key = 'memory:' + row.memory_id
                 memories[key] = row; originals[key] = row
                 facts = {'idol_card_id': row.idol_card_id, 'plan_type': row.plan_type, 'produce_card_phase_type': row.phase_type,

@@ -515,9 +515,9 @@
     ".gitattributes": "730a35ae3d558080083c3103d9ac8100c3f6561678092abe341701dfa331eb1d",
     ".gitignore": "2eeddd0fafdff86a5a3ae8dd252806c308cdcc1b5329d2f56bd7a7e7e3575e2c",
     "NOTICE.txt": "ec1511f9bdd37be646851358e4c6cc73bada6b0efdbd63237a9b806e1672b5a3",
-    "README.en.md": "aac78c5d9a879d2e115cd0e4962b8c80847b6b3e0ea2bac5959e23db0cb22e07",
-    "README.ja.md": "2abfef4edff4ca65af12dc2612012deb4955c43784a549ba783354da4b480cc4",
-    "README.md": "befcdff5b8060e657a95e7181f61f3309e54019b11a45d9c1648f00fbad5c4eb",
+    "README.en.md": "41d29160cbecb37a194f96a7ce6d8d8ad8594545729cd95e760304b6bad93fe0",
+    "README.ja.md": "5398388ba6f725b3ac41a787eb9e860b5377a411cbdb86782ed725b10a990031",
+    "README.md": "52300576611dd1c672b82f4d53491bb1ecf1213133ca74f31f2d6e4d41b75fe9",
     "docs/gui-update-recovery.md": "99a4ee357ecf82ba0651892fa2113b47e35dc9637c85db38be26710011a7b843",
     "docs/images/gui-cultivation-en.png": "e4a49f50f3015ba1b97b3cfbcc13eae93f55c4237ec51e99a746ba1c8531b437",
     "docs/images/gui-cultivation-ja.png": "bca40f1811219d547ab14596aabb6bac7b1d804cdcd5aa1cc634f4ddaf2efaac",
@@ -526,9 +526,9 @@
     "docs/images/gui-setup-ja.png": "e4a6b841c36076d004c7daade30f83716389f49fbda3eedbec17127587a785de",
     "docs/images/gui-setup-zh-Hant.png": "fa05a42b00584cd9bd7d48b493054309851a9283900757d4447d97c7877d81ac",
     "docs/portable-outer-assets.md": "34c67bf3879094ff3e5f6fc96fe22ab94866637ccf019c53211f7ab0c04e5efb",
-    "docs/public-README.en.md": "86c19c2e55a82893b3fbde659d883891ae74a7eaa5be9119aa8bf54e80c501a2",
-    "docs/public-README.ja.md": "d523cbe02a793ab23f2ee94a45d63b03ddf19d0c9bbe204e293f924ca7d92616",
-    "docs/public-README.md": "41a39b84059019f33f1fc2c3ff24306e3b2c80d4c66c6640bf0b144fec38846d",
+    "docs/public-README.en.md": "dfd5f8d3334219bb7e83d86fb2aedcb609b2869301b32bded0f29dae4a2b591f",
+    "docs/public-README.ja.md": "e452a568444001c96c32295bf8f886735a790946c821b864b26dad471d1216dd",
+    "docs/public-README.md": "ead842f45b74e302cab92458b496f0523dd68e4d1ee13fa6e5283c0f6210007c",
     "docs/public-gui-packaging.md": "15a156e7575d51822b9aebd25c8d4d7e4734cdd00a5d70891ebd3aa73e74f82b",
     "native-source/README.md": "b69f547f8a7abc31b038eee10d877b287783db5c75b0ff9afada3e2b16393f81",
     "native-source/SOURCE-MANIFEST.json": "e56b1c27ee460e0ac77510f28d2336afe65852bbf7466485659babc78175f4ba",
@@ -801,13 +801,13 @@
     "native-source/third_party/localify/src/windowsPlatform.hpp": "c10fc73c41c2a170b87fad6c74075ca6943b320adf033f0e63d816dceb37fca7",
     "native/gui_window/Program.cs": "691208a570ec956403593bb0ad2c3a334810860015b5d407ef9b0a8a4d866003",
     "native/gui_window/app.manifest": "cc02410e7dca96d146ff2dfef152f17aa2a8e6b74f0b9b5e3f3616bb50ccc6dd",
-    "pyproject.toml": "98529262449a4f762e89bfda422e14b8cf47893abc4d20fcaf49beb1e9e8eb7d",
+    "pyproject.toml": "8c2c5bed33b057a74e870377e647e02ba4fb39a4871766ae998c63e979ac5b97",
     "src/gkms_tool/__init__.py": "104b6a05d9ecef066c8f72c2effa43e8ce45f8853cb680377b82321cf522ef4a",
     "src/gkms_tool/account_inventory.py": "906fc96be493a0994eadee374da3980031a1ebf05a3e4c78b471db03c3f5b88d",
-    "src/gkms_tool/account_loadout.py": "cd5896bc7e7937d05302d80df0120e6d2896e33ab2c97696e0d38d6742741f21",
+    "src/gkms_tool/account_loadout.py": "bb982b6e9f388e7b7d774b7a028ad6fcde2689e729bf5045d2aab2e008afb305",
     "src/gkms_tool/active_state_features.py": "505bf0cc76a9a20e55d1d426eb54672aceace0e2d7105776849bba00796ab87d",
     "src/gkms_tool/activity_reward.py": "7a1770a859a7d787077e1b2b059270852dcfa4969c919536771de16ffdc98dea",
-    "src/gkms_tool/app_version.py": "0df14796c7aa48c1630098fe8dee848f8c690e4c1921d81c9d6fff56e4ed0c0b",
+    "src/gkms_tool/app_version.py": "bd5d1c38f4cb1c6495f9d2c1cf76604d0c06978e211c63962b3f9d156918ab6f",
     "src/gkms_tool/application_paths.py": "42d5280f14162001226c93b0bddb855d2a7cba8898a4a7e5be7f2b3020699eea",
     "src/gkms_tool/artifact_source_resolver.py": "9b57f58441d510b31af72b377b3070c93c91408946ae8ddf243ea05a613c2ede",
     "src/gkms_tool/audition_hand_hold_audit.py": "a19cc8007732576e42f6ad69bd441fb0b4146ae4a696447a93d94e4be1adcafc",
@@ -1327,7 +1327,7 @@
     "src/gkms_tool/portable_memory_loadout_prior.py": "c57662b8d82c5978eb5605fb6c797c0b9ca596752e90bcc4f39c4e4c0c03dc14",
     "src/gkms_tool/portable_model_assets.py": "55739f92e15f7622ddece9b94f21a821e487057517da6f671107b402357873f4",
     "src/gkms_tool/portable_outer_assets.py": "391a37fb3a3dfdea997db084b7bdce026574504b4dc580cbd3a38cbdf65b0354",
-    "src/gkms_tool/private_initial_loadout.py": "b32de94e1403ab026334d654ccf990ac1348f2281b6b3da22033af31cf2266b9",
+    "src/gkms_tool/private_initial_loadout.py": "9e94667dfb793305a27754dff75b49d8255a6eec3ab8f58bfda8677e4c7d9fe9",
     "src/gkms_tool/private_loadout_mode.py": "5468366a2aaf886d64a8e65c00fa354a5995f9375b8c4c96d92e1b3533051c56",
     "src/gkms_tool/private_outer_policy.py": "24f7d65aa1233e0c9d8c02859ad9394a44998a076ed3ac71fe2204472ec4a962",
     "src/gkms_tool/private_runtime_sources.py": "35ee7fdfa08f2d52b1034920964004a27f297747f625a8c6343187d59875f38c",
@@ -2206,7 +2206,7 @@
         "gkms_tool.rl_loadout_reference:21",
         "gkms_tool.runtime_outer_runner:1219"
       ],
-      "sha256": "cd5896bc7e7937d05302d80df0120e6d2896e33ab2c97696e0d38d6742741f21"
+      "sha256": "bb982b6e9f388e7b7d774b7a028ad6fcde2689e729bf5045d2aab2e008afb305"
     },
     {
       "module": "gkms_tool.active_state_features",
@@ -2248,7 +2248,7 @@
         "gkms_tool.gui_setup.app_updates:23",
         "gkms_tool.public_gui_entry:15"
       ],
-      "sha256": "0df14796c7aa48c1630098fe8dee848f8c690e4c1921d81c9d6fff56e4ed0c0b"
+      "sha256": "bd5d1c38f4cb1c6495f9d2c1cf76604d0c06978e211c63962b3f9d156918ab6f"
     },
     {
       "module": "gkms_tool.application_paths",
@@ -9071,7 +9071,7 @@
         "gkms_tool.rl.private_actor_assets:383",
         "gkms_tool.rl_loadout_advisor:519"
       ],
-      "sha256": "b32de94e1403ab026334d654ccf990ac1348f2281b6b3da22033af31cf2266b9"
+      "sha256": "9e94667dfb793305a27754dff75b49d8255a6eec3ab8f58bfda8677e4c7d9fe9"
     },
     {
       "module": "gkms_tool.private_loadout_mode",
@@ -11048,5 +11048,5 @@
   "research_cli_entrypoints_exported": false,
   "schema": "gkms.public-source-export.v1",
   "source_export_complete": true,
-  "version": "0.2.0"
+  "version": "0.2.1"
 }
